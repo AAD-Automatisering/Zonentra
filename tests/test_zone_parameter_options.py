@@ -13,6 +13,7 @@ from custom_components.zonentra.migration import migrate_options
 from tests.test_entry_layout import (
     CELSIUS,
     add_zone,
+    edit_zone_subject,
     set_states,
     setup_central,
     zone_options,
@@ -116,19 +117,19 @@ async def test_local_parameter_edits_retain_device_limits_without_entity_step(ha
     runtime = central.runtime_data
     runtime.set_thermostat("west", heating_limit=20, cooling_limit=25)
     flow = await hass.config_entries.options.async_init(zone.entry_id)
-    flow = await hass.config_entries.options.async_configure(
-        flow["flow_id"],
+    flow = await edit_zone_subject(
+        hass,
+        flow,
+        "zone_regulation",
         {
-            "name": "West",
-            "temperature_entity": "sensor.west_temperature",
-            "use_building_limits": False,
             "use_building_parameters": False,
+            "hysteresis": 0.5,
         },
     )
-    assert flow["step_id"] == "zone_parameters"
-    assert not set(REMOVED).intersection(flow["data_schema"].schema)
+    assert flow["type"] == FlowResultType.MENU
+    assert zone.options["hysteresis"] == 0.4
     flow = await hass.config_entries.options.async_configure(
-        flow["flow_id"], {"hysteresis": 0.5}
+        flow["flow_id"], {"next_step_id": "finish"}
     )
     assert flow["type"] == FlowResultType.CREATE_ENTRY
     await hass.async_block_till_done()

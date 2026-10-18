@@ -6,7 +6,12 @@ from homeassistant.data_entry_flow import FlowResultType
 from custom_components.zonentra.migration import PRECONDITIONING_FIELDS, migrate_options
 from custom_components.zonentra.models import build_model
 from tests.test_bookings_runtime import CALENDAR, calendar_service, office
-from tests.test_entry_layout import add_zone, set_states, zone_options
+from tests.test_entry_layout import (
+    add_zone,
+    edit_zone_subject,
+    set_states,
+    zone_options,
+)
 
 LOCAL = dict(zip(PRECONDITIONING_FIELDS, (120, 15, 0.04, 0.06), strict=True))
 CENTRAL = dict(zip(PRECONDITIONING_FIELDS, (240, 20, 0.03, 0.08), strict=True))
@@ -83,32 +88,43 @@ async def test_room_can_switch_to_central_and_restore_dormant_preparation(hass):
         },
     )
     assert await hass.config_entries.async_reload(central.entry_id)
-    values = {
-        "name": "West",
-        "temperature_entity": "sensor.west_temperature",
-        "calendar_entity": CALENDAR,
-        "use_building_limits": True,
-        "use_building_parameters": True,
-        "use_building_preconditioning": True,
-    }
     flow = await hass.config_entries.options.async_init(zone.entry_id)
-    assert set(PRECONDITIONING_FIELDS).isdisjoint(flow["data_schema"].schema)
-    flow = await hass.config_entries.options.async_configure(flow["flow_id"], values)
-    assert flow["type"] == FlowResultType.CREATE_ENTRY
+    flow = await edit_zone_subject(
+        hass,
+        flow,
+        "zone_preconditioning",
+        {
+            "calendar_entity": CALENDAR,
+            "use_building_preconditioning": True,
+        },
+    )
+    await hass.config_entries.options.async_configure(
+        flow["flow_id"], {"next_step_id": "finish"}
+    )
     await hass.async_block_till_done()
     assert central.runtime_data.building.zones[0].preconditioning_max_minutes == 240
     assert zone.options["preconditioning_max_minutes"] == 120
-    values["use_building_preconditioning"] = False
     flow = await hass.config_entries.options.async_init(zone.entry_id)
-    flow = await hass.config_entries.options.async_configure(flow["flow_id"], values)
-    assert flow["step_id"] == "zone_parameters"
-    assert set(flow["data_schema"].schema) == set(PRECONDITIONING_FIELDS)
+    flow = await hass.config_entries.options.async_configure(
+        flow["flow_id"], {"next_step_id": "zone_preconditioning"}
+    )
     suggested = {
-        marker.schema: marker.description["suggested_value"]
+        marker.schema: marker.description.get("suggested_value")
         for marker in flow["data_schema"].schema
+        if marker.schema in LOCAL
     }
     assert suggested == LOCAL
-    flow = await hass.config_entries.options.async_configure(flow["flow_id"], LOCAL)
+    flow = await hass.config_entries.options.async_configure(
+        flow["flow_id"],
+        {
+            "calendar_entity": CALENDAR,
+            "use_building_preconditioning": False,
+            **LOCAL,
+        },
+    )
+    flow = await hass.config_entries.options.async_configure(
+        flow["flow_id"], {"next_step_id": "finish"}
+    )
     assert flow["type"] == FlowResultType.CREATE_ENTRY
     await hass.async_block_till_done()
     assert central.runtime_data.building.zones[0].preconditioning_max_minutes == 120
@@ -137,26 +153,11 @@ async def test_calendar_can_be_changed_and_removed_using_room_options(hass):
     other = "calendar.other_meeting"
     hass.states.async_set(other, "off")
     calendar_service(hass, {other: {"events": []}})
+    values = {"calendar_entity": other, "use_building_preconditioning": False, **LOCAL}
     flow = await hass.config_entries.options.async_init(zone.entry_id)
-    assert "calendar_entity" in flow["data_schema"].schema
-    values = {
-        "name": "West",
-        "temperature_entity": "sensor.west_temperature",
-        "calendar_entity": other,
-        "use_building_preconditioning": False,
-        "use_building_limits": True,
-        "use_building_parameters": True,
-    }
-    flow = await hass.config_entries.options.async_configure(flow["flow_id"], values)
-    assert flow["step_id"] == "zone_parameters"
+    flow = await edit_zone_subject(hass, flow, "zone_preconditioning", values)
     flow = await hass.config_entries.options.async_configure(
-        flow["flow_id"],
-        {
-            "preconditioning_max_minutes": 120,
-            "preconditioning_buffer_minutes": 15,
-            "preconditioning_heating_rate": 0.04,
-            "preconditioning_cooling_rate": 0.06,
-        },
+        flow["flow_id"], {"next_step_id": "finish"}
     )
     assert flow["type"] == FlowResultType.CREATE_ENTRY
     await hass.async_block_till_done()
@@ -169,16 +170,9 @@ async def test_calendar_can_be_changed_and_removed_using_room_options(hass):
     assert other in runtime.building.entity_ids
     values.pop("calendar_entity")
     flow = await hass.config_entries.options.async_init(zone.entry_id)
-    flow = await hass.config_entries.options.async_configure(flow["flow_id"], values)
-    assert flow["step_id"] == "zone_parameters"
+    flow = await edit_zone_subject(hass, flow, "zone_preconditioning", values)
     flow = await hass.config_entries.options.async_configure(
-        flow["flow_id"],
-        {
-            "preconditioning_max_minutes": 120,
-            "preconditioning_buffer_minutes": 15,
-            "preconditioning_heating_rate": 0.04,
-            "preconditioning_cooling_rate": 0.06,
-        },
+        flow["flow_id"], {"next_step_id": "finish"}
     )
     assert flow["type"] == FlowResultType.CREATE_ENTRY
     await hass.async_block_till_done()

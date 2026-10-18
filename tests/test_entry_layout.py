@@ -32,6 +32,14 @@ def zone_options(zone_id, *units, **fields):
     }
 
 
+async def edit_zone_subject(hass, flow, subject, values):
+    flow = await hass.config_entries.options.async_configure(
+        flow["flow_id"], {"next_step_id": subject}
+    )
+    assert flow["type"] == FlowResultType.FORM
+    return await hass.config_entries.options.async_configure(flow["flow_id"], values)
+
+
 def set_states(hass, zone_id, *units, temperature="21"):
     hass.states.async_set(f"sensor.{zone_id}_temperature", temperature, CELSIUS)
     for unit in units:
@@ -203,18 +211,29 @@ async def test_zone_options_rebuild_building_and_entities(hass):
     central = await setup_central(hass)
     west = await add_zone(hass, zone_options("west", "climate.west_ac"))
     result = await hass.config_entries.options.async_init(west.entry_id)
-    assert result["step_id"] == "zone_settings"
-    result = await hass.config_entries.options.async_configure(
-        result["flow_id"],
+    assert result["step_id"] == "zone_menu"
+    result = await edit_zone_subject(
+        hass,
+        result,
+        "zone_general",
         {
             "name": "West wing",
-            "temperature_entity": "sensor.west_temperature",
-            "indoor_units": ["climate.west_ac", "climate.west_ac_2"],
-            "group_id": "outdoor_1",
             "weight": 2,
             "use_building_limits": True,
-            "use_building_parameters": True,
         },
+    )
+    result = await edit_zone_subject(
+        hass,
+        result,
+        "zone_hvac",
+        {
+            "indoor_units": ["climate.west_ac", "climate.west_ac_2"],
+            "group_id": "outdoor_1",
+        },
+    )
+    assert west.title == "West"  # No reload or partial writes while editing.
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"next_step_id": "finish"}
     )
     assert result["type"] == FlowResultType.CREATE_ENTRY
     await hass.async_block_till_done()

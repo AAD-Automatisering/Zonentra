@@ -371,6 +371,106 @@
           "preconditioning_cooling_rate": "Initial cooling rate (°C/min; default 0.05, adjusted for outdoor temperature)"
         },
         "submit": "Apply and return"
+      },
+      "zone_menu": {
+        "title": "Room settings",
+        "description": "Choose a subject. Apply and return goes back to this menu. Changes are saved only with Save; closing discards them.",
+        "menu_options": {
+          "zone_general": "General",
+          "zone_sensors": "Sensors and occupancy",
+          "zone_hvac": "Air conditioners and vanes",
+          "zone_regulation": "Regulation parameters",
+          "zone_floor_heating": "Floor heating",
+          "zone_screens": "Screens",
+          "zone_ventilation": "Ventilation",
+          "zone_preconditioning": "Calendar and meeting preparation",
+          "finish": "Save"
+        }
+      },
+      "zone_general": {
+        "title": "General",
+        "description": "Name, weight and central climate limits. Set fixed temperature limits on the room device.",
+        "data": {
+          "name": "Name",
+          "weight": "Zone weight",
+          "use_building_limits": "Use central climate limits"
+        },
+        "submit": "Apply and return"
+      },
+      "zone_sensors": {
+        "title": "Sensors and occupancy",
+        "description": "Temperature, motion, air quality and window or door contacts for this room.",
+        "data": {
+          "temperature_entity": "Room temperature sensor",
+          "occupancy_entity": "Motion sensor (optional; without motion the zone uses the eco band)",
+          "humidity_entity": "Humidity (optional)",
+          "co2_entity": "CO₂ sensor (optional)",
+          "contact_entities": "Window and door contacts (optional)"
+        },
+        "submit": "Apply and return"
+      },
+      "zone_hvac": {
+        "title": "Air conditioners and vanes",
+        "description": "Indoor units, their outdoor unit group and vane control.",
+        "data": {
+          "indoor_units": "Indoor units (climate entities)",
+          "group_id": "Outdoor unit group",
+          "vane_entity": "Vane (optional; select, number or switch entity of the indoor unit)",
+          "vane_cool_value": "Vane when cooling (up): option, number, or on/off for a switch",
+          "vane_heat_value": "Vane when heating (down): option, number, or on/off for a switch"
+        },
+        "submit": "Apply and return"
+      },
+      "zone_regulation": {
+        "title": "Regulation parameters",
+        "description": "Use central regulation parameters, or disable that choice to use the local values below. Local values are retained when switching to central.",
+        "data": {
+          "use_building_parameters": "Use central regulation parameters",
+          "hysteresis": "Temperature hysteresis (°C)",
+          "sensor_validation": "Sensor validation (state_based = default; update_based only for periodically reporting sensors)",
+          "max_age_seconds": "Maximum update age for update_based (seconds; ignored by state_based)"
+        },
+        "submit": "Apply and return"
+      },
+      "zone_floor_heating": {
+        "title": "Floor heating",
+        "description": "Link floor thermostats. The local minimum applies only when central settings are disabled; existing local values are otherwise retained.",
+        "data": {
+          "floor_heating_entities": "Floor thermostats with room temperature setpoint (climate; legacy number observation only)",
+          "use_building_floor_heating": "Use central floor heating settings",
+          "floor_heating_limit": "Floor heating: fixed minimum room temperature (°C; default 16)"
+        },
+        "submit": "Apply and return"
+      },
+      "zone_screens": {
+        "title": "Screens",
+        "description": "Link screens and select their facade orientation.",
+        "data": {
+          "shading_entities": "Shading (optional)",
+          "facade": "Facade of the screens (optional)"
+        },
+        "submit": "Apply and return"
+      },
+      "zone_ventilation": {
+        "title": "Ventilation",
+        "description": "Link this room’s fans or ventilation switches.",
+        "data": {
+          "ventilation_entities": "Ventilation (optional)"
+        },
+        "submit": "Apply and return"
+      },
+      "zone_preconditioning": {
+        "title": "Calendar and meeting preparation",
+        "description": "Link a calendar. Local preparation values apply only when central meeting preparation is disabled; existing local values are otherwise retained.",
+        "data": {
+          "calendar_entity": "Room calendar (optional; adaptive heating/cooling before meetings)",
+          "use_building_preconditioning": "Use central meeting preparation settings",
+          "preconditioning_max_minutes": "Maximum preparation time (minutes; default 180)",
+          "preconditioning_buffer_minutes": "Preparation safety margin (minutes; default 10)",
+          "preconditioning_heating_rate": "Initial heating rate (°C/min; default 0.05, adjusted for outdoor temperature)",
+          "preconditioning_cooling_rate": "Initial cooling rate (°C/min; default 0.05, adjusted for outdoor temperature)"
+        },
+        "submit": "Apply and return"
       }
     },
     "error": {

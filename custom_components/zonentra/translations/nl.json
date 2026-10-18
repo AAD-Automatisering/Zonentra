@@ -371,6 +371,106 @@
           "preconditioning_cooling_rate": "Starttempo koelen (°C/min; standaard 0,05, aangepast aan buitentemperatuur)"
         },
         "submit": "Toepassen en terug"
+      },
+      "zone_menu": {
+        "title": "Ruimte-instellingen",
+        "description": "Kies een onderwerp. Toepassen en terug keert terug naar dit menu. Wijzigingen worden pas bewaard via Opslaan; sluiten verwerpt ze.",
+        "menu_options": {
+          "zone_general": "Algemeen",
+          "zone_sensors": "Sensoren en aanwezigheid",
+          "zone_hvac": "Airco’s en lamellen",
+          "zone_regulation": "Regelparameters",
+          "zone_floor_heating": "Vloerverwarming",
+          "zone_screens": "Zonwering",
+          "zone_ventilation": "Ventilatie",
+          "zone_preconditioning": "Agenda en afspraakvoorbereiding",
+          "finish": "Opslaan"
+        }
+      },
+      "zone_general": {
+        "title": "Algemeen",
+        "description": "Naam, weging en de keuze voor centrale klimaatgrenzen. Vaste temperatuurgrenzen stel je in op het ruimteapparaat.",
+        "data": {
+          "name": "Naam",
+          "weight": "Ruimteweging",
+          "use_building_limits": "Centrale klimaatgrenzen gebruiken"
+        },
+        "submit": "Toepassen en terug"
+      },
+      "zone_sensors": {
+        "title": "Sensoren en aanwezigheid",
+        "description": "Temperatuur, beweging, luchtkwaliteit en raam- of deurcontacten van deze ruimte.",
+        "data": {
+          "temperature_entity": "Ruimtetemperatuursensor",
+          "occupancy_entity": "Bewegingssensor (optioneel; zonder beweging geldt de eco-band)",
+          "humidity_entity": "Luchtvochtigheid (optioneel)",
+          "co2_entity": "CO₂-sensor (optioneel)",
+          "contact_entities": "Raam- en deurcontacten (optioneel)"
+        },
+        "submit": "Toepassen en terug"
+      },
+      "zone_hvac": {
+        "title": "Airco’s en lamellen",
+        "description": "Binnenunits, hun buitenunitgroep en de lamellenregeling.",
+        "data": {
+          "indoor_units": "Binnenunits (climate-entiteiten)",
+          "group_id": "Buitenunitgroep",
+          "vane_entity": "Lamel (optioneel; select-, number- of schakelaar-entiteit van de binnenunit)",
+          "vane_cool_value": "Lamel bij koelen (omhoog): keuze, getal, of on/off bij een schakelaar",
+          "vane_heat_value": "Lamel bij verwarmen (omlaag): keuze, getal, of on/off bij een schakelaar"
+        },
+        "submit": "Toepassen en terug"
+      },
+      "zone_regulation": {
+        "title": "Regelparameters",
+        "description": "Gebruik centrale regelparameters of zet die keuze uit om de onderstaande lokale waarden te gebruiken. Lokale waarden blijven bewaard bij omschakelen naar centraal.",
+        "data": {
+          "use_building_parameters": "Centrale regelparameters gebruiken",
+          "hysteresis": "Temperatuurhysterese (°C)",
+          "sensor_validation": "Sensorvalidatie (state_based = standaard; update_based alleen voor periodiek rapporterende sensoren)",
+          "max_age_seconds": "Maximale updateleeftijd bij update_based (seconden; genegeerd bij state_based)"
+        },
+        "submit": "Toepassen en terug"
+      },
+      "zone_floor_heating": {
+        "title": "Vloerverwarming",
+        "description": "Koppel de vloerthermostaten. De lokale ondergrens geldt alleen wanneer centrale instellingen uit staan; bestaande lokale waarden blijven anders bewaard.",
+        "data": {
+          "floor_heating_entities": "Vloerthermostaten met kamertemperatuursetpoint (climate; oude number alleen observatie)",
+          "use_building_floor_heating": "Centrale instellingen voor vloerverwarming gebruiken",
+          "floor_heating_limit": "Vloerverwarming: vaste ondergrens kamertemperatuur (°C; standaard 16)"
+        },
+        "submit": "Toepassen en terug"
+      },
+      "zone_screens": {
+        "title": "Zonwering",
+        "description": "Koppel de zonwering en kies de gevelrichting.",
+        "data": {
+          "shading_entities": "Zonwering (optioneel)",
+          "facade": "Gevel van de zonwering (optioneel)"
+        },
+        "submit": "Toepassen en terug"
+      },
+      "zone_ventilation": {
+        "title": "Ventilatie",
+        "description": "Koppel de ventilatoren of ventilatieschakelaars van deze ruimte.",
+        "data": {
+          "ventilation_entities": "Ventilatie (optioneel)"
+        },
+        "submit": "Toepassen en terug"
+      },
+      "zone_preconditioning": {
+        "title": "Agenda en afspraakvoorbereiding",
+        "description": "Koppel een agenda. Lokale voorbereidingswaarden gelden alleen wanneer centrale afspraakvoorbereiding uit staat; bestaande lokale waarden blijven anders bewaard.",
+        "data": {
+          "calendar_entity": "Ruimteagenda (optioneel; adaptief verwarmen/koelen vóór afspraken)",
+          "use_building_preconditioning": "Gebruik centrale instellingen voor afspraakvoorbereiding",
+          "preconditioning_max_minutes": "Maximale voorbereidingstijd (minuten; standaard 180)",
+          "preconditioning_buffer_minutes": "Veiligheidsmarge voor voorbereiding (minuten; standaard 10)",
+          "preconditioning_heating_rate": "Starttempo verwarmen (°C/min; standaard 0,05, aangepast aan buitentemperatuur)",
+          "preconditioning_cooling_rate": "Starttempo koelen (°C/min; standaard 0,05, aangepast aan buitentemperatuur)"
+        },
+        "submit": "Toepassen en terug"
       }
     },
     "error": {

@@ -79,6 +79,11 @@ Home Assistant-states bevestigen geen fysieke compressorstand.
 
 Via **Configureren** bij de centrale configuratie stel je aanwezigheid,
 ruimteregeling, zonwering, weersverwachting, afspraakvoorbereiding en groepen in.
+Via **Configureren** bij een ruimte kies je een afzonderlijk onderwerp: Algemeen,
+Sensoren en aanwezigheid, Airco’s en lamellen, Regelparameters, Vloerverwarming,
+Zonwering, Ventilatie of Agenda en afspraakvoorbereiding. **Toepassen en terug**
+bewaart een onderwerp in het concept en opent weer het menu; **Opslaan** bewaart
+alle wijzigingen in één keer. Sluiten verwerpt het concept.
 Ruimtes nemen standaard centrale instellingen over en kunnen daarvan afwijken.
 Comfortgrenzen stel je in op het centrale apparaat of het ruimteapparaat.
 Een geldige, uitsluitend verwarmende of koelende vraag wordt door de groep gevolgd,

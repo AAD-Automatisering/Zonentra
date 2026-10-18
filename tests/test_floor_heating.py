@@ -13,7 +13,13 @@ from custom_components.zonentra.diagnostics import async_get_config_entry_diagno
 from custom_components.zonentra.floor_heating import heating_progress
 from custom_components.zonentra.models import build_model
 from custom_components.zonentra.thermostat import Thermostat
-from tests.test_entry_layout import add_zone, set_states, setup_central, zone_options
+from tests.test_entry_layout import (
+    add_zone,
+    edit_zone_subject,
+    set_states,
+    setup_central,
+    zone_options,
+)
 from tests.test_thermostat_runtime import later, mock_climate
 
 FLOOR = "climate.floor"
@@ -409,15 +415,18 @@ async def test_local_floor_options_round_trip(hass):
 
     runtime, room, _ = await setup_floor(hass)
     flow = await hass.config_entries.options.async_init(room.entry_id)
-    fields = {
-        **{key: value for key, value in room.options.items() if key != "id"},
-        "use_building_floor_heating": False,
-    }
-    flow = await hass.config_entries.options.async_configure(flow["flow_id"], fields)
-    assert flow["step_id"] == "zone_parameters"
-    assert set(flow["data_schema"].schema) == {"floor_heating_limit"}
+    flow = await edit_zone_subject(
+        hass,
+        flow,
+        "zone_floor_heating",
+        {
+            "floor_heating_entities": [FLOOR],
+            "use_building_floor_heating": False,
+            "floor_heating_limit": 15,
+        },
+    )
     flow = await hass.config_entries.options.async_configure(
-        flow["flow_id"], {"floor_heating_limit": 15}
+        flow["flow_id"], {"next_step_id": "finish"}
     )
     assert flow["type"] == FlowResultType.CREATE_ENTRY
     await hass.async_block_till_done()

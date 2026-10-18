@@ -318,6 +318,55 @@ def zone_fields(groups: list[dict]) -> dict:
     }
 
 
+# Each settings page owns only these keys; clearing a field never removes
+# settings on another page. Local values stay dormant while central is on.
+ZONE_OPTION_SECTIONS = {
+    "zone_general": ("name", "weight", "use_building_limits"),
+    "zone_sensors": (
+        "temperature_entity",
+        "occupancy_entity",
+        "humidity_entity",
+        "co2_entity",
+        "contact_entities",
+    ),
+    "zone_hvac": (
+        "indoor_units",
+        "group_id",
+        "vane_entity",
+        "vane_cool_value",
+        "vane_heat_value",
+    ),
+    "zone_regulation": (
+        "use_building_parameters",
+        "hysteresis",
+        "sensor_validation",
+        "max_age_seconds",
+    ),
+    "zone_floor_heating": (
+        "floor_heating_entities",
+        "use_building_floor_heating",
+        *FLOOR_FIELDS,
+    ),
+    "zone_screens": ("shading_entities", "facade"),
+    "zone_ventilation": ("ventilation_entities",),
+    "zone_preconditioning": (
+        "calendar_entity",
+        "use_building_preconditioning",
+        *PRECONDITIONING_FIELDS,
+    ),
+}
+
+
+def zone_section_fields(section: str, groups: list[dict]) -> dict:
+    """Reuse the existing selectors, displaying just one room subject."""
+    fields = {
+        **zone_fields(groups),
+        **zone_parameter_fields(dict.fromkeys(ZONE_FLAGS, False)),
+    }
+    keys = ZONE_OPTION_SECTIONS[section]
+    return {marker: value for marker, value in fields.items() if marker.schema in keys}
+
+
 def zone_parameter_fields(record: dict) -> dict:
     """Local parameters, only when not taken from the building."""
     fields = {}
@@ -538,41 +587,105 @@ class ZonentraConfigFlow(ZoneFormMixin, ConfigFlow, domain=DOMAIN):
 
 
 class ZoneOptionsFlow(ZoneFormMixin, OptionsFlow):
-    """Edit one zone; the zone's update listener rebuilds the building."""
+    """Edit room subjects in a draft, then save and reload the room once."""
 
     def __init__(self):
-        self.zone: dict = {}
+        self.zone: dict | None = None
 
     async def async_step_init(self, user_input=None):
-        return await self.async_step_zone_settings()
+        return await self.async_step_zone_menu()
 
-    async def async_step_zone_settings(self, user_input=None):
-        previous = dict(self.config_entry.options)
-        errors = {}
-        if user_input is not None:
-            self.zone = merge_zone(previous, user_input)
-            errors = check_zone(
-                self.hass, self.zone, self.config_entry.entry_id, partial=True
-            )
-            if not errors:
-                if zone_parameter_fields(self.zone):
-                    return await self.async_step_zone_parameters()
-                return self._save()
-        return self._zone_form(
-            "zone_settings", user_input or self.zone or previous, errors
+    async def async_step_zone_menu(self, user_input=None):
+        if self.zone is None:
+            self.zone = deepcopy(dict(self.config_entry.options))
+        return self.async_show_menu(
+            step_id="zone_menu",
+            menu_options=[
+                "zone_general",
+                "zone_sensors",
+                "zone_hvac",
+                "zone_regulation",
+                "zone_floor_heating",
+                "zone_screens",
+                "zone_ventilation",
+                "zone_preconditioning",
+                "finish",
+            ],
         )
 
-    async def async_step_zone_parameters(self, user_input=None):
+    async def _section(self, section, user_input):
+        keys = ZONE_OPTION_SECTIONS[section]
         errors = {}
         if user_input is not None:
-            self.zone = merge_zone_parameters(self.zone, user_input)
-            errors = check_zone(self.hass, self.zone, self.config_entry.entry_id)
+            candidate = {
+                **{key: value for key, value in self.zone.items() if key not in keys},
+                **clean(user_input),
+            }
+            for flag in ZONE_FLAGS:
+                if flag in keys:
+                    candidate.setdefault(flag, self.zone.get(flag, True))
+            for flag, local_keys in (
+                (
+                    "use_building_parameters",
+                    ("hysteresis", "sensor_validation", "max_age_seconds"),
+                ),
+                ("use_building_preconditioning", PRECONDITIONING_FIELDS),
+                ("use_building_floor_heating", FLOOR_FIELDS),
+            ):
+                if flag in keys and candidate.get(flag, True):
+                    for key in local_keys:
+                        candidate.pop(key, None)
+                        if key in self.zone:
+                            candidate[key] = self.zone[key]
+            errors = check_zone(self.hass, candidate, self.config_entry.entry_id)
             if not errors:
-                return self._save()
-        return self._parameters_form(user_input or self.zone, errors)
+                self.zone = candidate
+                return await self.async_step_init()
+        central = central_entry(self.hass)
+        building = dict(central.options.get("building", {})) if central else {}
+        schema = self.add_suggested_values_to_schema(
+            vol.Schema(zone_section_fields(section, self._groups())),
+            {
+                **building_defaults(),
+                **building,
+                **ZONE_DEFAULTS,
+                **self.zone,
+                **(user_input or {}),
+            },
+        )
+        return self.async_show_form(step_id=section, data_schema=schema, errors=errors)
 
-    def _save(self):
-        # One update (title and options) triggers the reload listener once.
+    async def async_step_zone_general(self, user_input=None):
+        return await self._section("zone_general", user_input)
+
+    async def async_step_zone_sensors(self, user_input=None):
+        return await self._section("zone_sensors", user_input)
+
+    async def async_step_zone_hvac(self, user_input=None):
+        return await self._section("zone_hvac", user_input)
+
+    async def async_step_zone_regulation(self, user_input=None):
+        return await self._section("zone_regulation", user_input)
+
+    async def async_step_zone_floor_heating(self, user_input=None):
+        return await self._section("zone_floor_heating", user_input)
+
+    async def async_step_zone_screens(self, user_input=None):
+        return await self._section("zone_screens", user_input)
+
+    async def async_step_zone_ventilation(self, user_input=None):
+        return await self._section("zone_ventilation", user_input)
+
+    async def async_step_zone_preconditioning(self, user_input=None):
+        return await self._section("zone_preconditioning", user_input)
+
+    async def async_step_finish(self, user_input=None):
+        # Revalidate in case another room changed while the draft was open.
+        errors = check_zone(self.hass, self.zone, self.config_entry.entry_id)
+        if errors:
+            result = await self._section("zone_hvac", None)
+            result["errors"] = errors
+            return result
         self.hass.config_entries.async_update_entry(
             self.config_entry, title=self.zone["name"], options=self.zone
         )
