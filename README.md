@@ -95,6 +95,7 @@ Wachttijden, apparaatbeschikbaarheid en beveiligingen blijven gelden.
 | Lamellen | Optionele entiteit met standen voor verwarmen en koelen |
 | Zonwering | Koppel covers met positie en gevel; stel centraal zonvermogen, zonstand en eventueel een blokkering in |
 | Weersverwachting | Koppel centraal een weerentiteit met uurverwachtingen |
+| Openingstijden | Selecteer centraal onder **Aanwezigheid** een schedule-helper; gewone ruimtes bereiden zich automatisch voor vóór opening |
 | Ruimteagenda | Koppel per ruimte een calendar-entiteit voor adaptieve comfortvoorbereiding |
 
 Standaard is comfort 21–24 °C, eco 19–26 °C en afwezig 16–30 °C.
@@ -104,6 +105,15 @@ laat de ventilatorkeuze volledig aan de gebruiker wanneer hij uit staat. Bekende
 snelheidsnamen en numerieke standen worden van laag naar hoog geordend; onbekende
 fabrikantstanden behouden hun volgorde. De thermostaat gebruikt gemelde activiteit
 zoals `idle` waar beschikbaar; `activity_source` maakt terugval op de gekozen modus zichtbaar.
+
+Het centrale openingstijdenschema geldt voor alle ruimtes zonder agenda; er is
+geen instelling per ruimte voor het schema. De voorbereiding gebruikt temperatuurverschil,
+buitentemperatuur en geleerde opwarm-/afkoeltempo's. Het schema meldt geen aanwezigheid.
+Na voorbereiding geldt bij opening maximaal 15 minuten aankomstmarge zolang het
+gebouw afwezig is. Daarna bepalen aanwezigheid en beweging weer de temperatuur;
+ook buiten openingstijden kan werkelijke aanwezigheid comfort geven. Bij een
+onbruikbaar schema wordt geen voorbereiding gevraagd. Eco/Afwezig en uitgeschakelde
+regeling blijven leidend. De sensor **Klimaatvraag** toont status en starttijd.
 
 Agenda's gebruiken de comfortband en geleerde opwarm-/afkoeltempo's per ruimte.
 Stel marge en maximale voorbereiding centraal in via **Afspraakvoorbereiding**;

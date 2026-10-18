@@ -68,6 +68,7 @@ from .runtime_bookings import BookingRuntimeMixin
 from .runtime_commands import CommandRuntimeMixin
 from .runtime_floor import FloorRuntimeMixin
 from .runtime_helpers import _origin, _setpoint
+from .runtime_office import OfficeRuntimeMixin
 from .runtime_shading import ShadingRuntimeMixin
 from .runtime_timing import TimingRuntimeMixin
 from .shading import ScreenDecision, ScreenMove, SunMemory
@@ -104,6 +105,7 @@ ZONE_LIMIT_KEYS = (
 class BuildingRuntime(
     FloorRuntimeMixin,
     BookingRuntimeMixin,
+    OfficeRuntimeMixin,
     ShadingRuntimeMixin,
     TimingRuntimeMixin,
     CommandRuntimeMixin,
@@ -205,6 +207,8 @@ class BuildingRuntime(
         self.booking_updated: dict = {}
         self.booking_errors: dict = {}
         self.booking_plans: dict = {}
+        self.office_plans: dict = {}
+        self._office_checks: list = []
         self.booking_results: dict = {}
         self.booking_interrupted: dict = {}
         self._booking_checks: list = []
@@ -371,8 +375,14 @@ class BuildingRuntime(
                 self.zone_demands[zone.id].demand
                 if zone.id in self.zone_demands
                 else "unknown",
-                0 if self.booking_plans[zone.id].active else heating_margin,
-                0 if self.booking_plans[zone.id].active else cooling_margin,
+                0
+                if self.booking_plans[zone.id].active
+                or self.office_plans[zone.id].active
+                else heating_margin,
+                0
+                if self.booking_plans[zone.id].active
+                or self.office_plans[zone.id].active
+                else cooling_margin,
             )
             # Thermostat mode: off asks nothing, heat/cool only one direction.
             demand = room_demand(self.thermostat(zone.id).hvac_mode, demand)
@@ -480,6 +490,7 @@ class BuildingRuntime(
         )
         deadlines.extend(due for due, _, _ in self.pending_offs)
         deadlines.extend(self._booking_checks)
+        deadlines.extend(self._office_checks)
         deadlines.extend(self._motion_checks)
         deadlines.extend(self._setpoint_checks)
         deadlines.extend(self._window_checks)
@@ -513,6 +524,7 @@ class BuildingRuntime(
         )
         checks, result = [], {}
         self._booking_checks = []
+        self._office_checks = []
         for zone in self.building.zones:
             entity = zone.occupancy_entity
             motion, memory, check = motion_state(
@@ -526,9 +538,10 @@ class BuildingRuntime(
             self.motion_memories[zone.id] = memory
             if check:
                 checks.append(check)
-            result[zone.id] = self._booking_occupancy(
+            booked = self._booking_occupancy(
                 zone, occupancy(self.presence, motion), sources, now
             )
+            result[zone.id] = self._office_occupancy(zone, booked, sources, now)
         self.zone_occupancy = result
         self._motion_checks = checks
 
@@ -680,6 +693,15 @@ class BuildingRuntime(
                     if key in calendars
                 },
             )
+        if (
+            self.building.settings.office_schedule_entity
+            == previous.building.settings.office_schedule_entity
+        ):
+            self.office_plans = {
+                zone.id: previous.office_plans[zone.id]
+                for zone in self.building.zones
+                if not zone.calendar_entity and zone.id in previous.office_plans
+            }
         previous_calendars = {
             zone.id: zone.calendar_entity for zone in previous.building.zones
         }

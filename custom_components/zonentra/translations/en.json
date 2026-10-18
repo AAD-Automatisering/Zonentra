@@ -120,7 +120,11 @@
         "data": {
           "presence_entity": "Building presence (binary_sensor, input_boolean, alarm panel, person, group or zone)",
           "motion_delay_seconds": "Motion detection delay (seconds)",
-          "motion_off_delay_minutes": "Time occupied after last motion (minutes)"
+          "motion_off_delay_minutes": "Time occupied after last motion (minutes)",
+          "office_schedule_entity": "Office opening hours (optional)"
+        },
+        "data_description": {
+          "office_schedule_entity": "Select a schedule helper. Ordinary rooms prepare automatically before opening, including while absent. A maximum 15-minute arrival grace follows opening; presence and motion then determine comfort. Calendar rooms continue to follow their bookings."
         }
       },
       "regulation": {
@@ -293,7 +297,11 @@
           "screen_wind_speed_limit": "Maximum sustained wind (km/h; enter manufacturer limit, empty = not checked)",
           "screen_wind_gust_limit": "Maximum wind gust (km/h; enter manufacturer limit, empty = not checked)",
           "screen_wind_calm_minutes": "Calm hold before shading may lower again (minutes; default 30)",
-          "screen_wind_max_age_minutes": "Maximum wind weather report age (minutes; default 60)"
+          "screen_wind_max_age_minutes": "Maximum wind weather report age (minutes; default 60)",
+          "office_schedule_entity": "Office opening hours (optional)"
+        },
+        "data_description": {
+          "office_schedule_entity": "Select a schedule helper. Ordinary rooms prepare automatically before opening, including while absent. A maximum 15-minute arrival grace follows opening; presence and motion then determine comfort. Calendar rooms continue to follow their bookings."
         }
       },
       "zone_settings": {

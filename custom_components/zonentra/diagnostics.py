@@ -159,6 +159,23 @@ def _room_context(runtime, zone_ids):
             for item in runtime.building.equipment
             if item.kind == "shading" and item.zone_id in zone_ids
         ],
+        "office_schedule": [
+            {
+                "zone_id": zone.id,
+                "plan": {
+                    **asdict(plan),
+                    "start": _iso(plan.start),
+                    "end": _iso(plan.end),
+                    "prepare_at": _iso(plan.prepare_at),
+                    "next_check": _iso(plan.next_check),
+                },
+                "active_band": runtime.zone_bands.get(zone.id),
+            }
+            for zone in runtime.building.zones
+            if zone.id in zone_ids
+            and (plan := runtime.office_plans.get(zone.id))
+            and plan.status != "not_configured"
+        ],
         "bookings": [
             {
                 "zone_id": zone.id,

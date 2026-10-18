@@ -33,7 +33,11 @@ class BookingRuntimeMixin:
     """Calendars request comfort; existing room and group controls authorize HVAC."""
 
     def _booking_priority(self, zone, demand, now):
-        plan = self.booking_plans[zone.id]
+        plan = (
+            self.booking_plans[zone.id]
+            if zone.calendar_entity
+            else self.office_plans[zone.id]
+        )
         if (
             not plan.active
             or self.zone_bands[zone.id][0] != "comfort"
@@ -338,7 +342,10 @@ class BookingRuntimeMixin:
 
     def _learn_booking_rates(self, now):
         for zone in self.building.zones:
-            if not zone.calendar_entity:
+            if (
+                not zone.calendar_entity
+                and not self.building.settings.office_schedule_entity
+            ):
                 continue
             temperature = self.zone_snapshots[zone.id].temperature
             units = [

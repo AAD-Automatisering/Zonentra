@@ -120,7 +120,11 @@
         "data": {
           "presence_entity": "Aanwezigheid gebouw (binary_sensor, input_boolean, alarmpaneel, persoon, groep of zone)",
           "motion_delay_seconds": "Bewegingsdetectie-vertraging (seconden)",
-          "motion_off_delay_minutes": "Ruimte bezet na laatste beweging (minuten)"
+          "motion_off_delay_minutes": "Ruimte bezet na laatste beweging (minuten)",
+          "office_schedule_entity": "Openingstijden kantoor (optioneel)"
+        },
+        "data_description": {
+          "office_schedule_entity": "Selecteer een schedule-helper. Gewone ruimtes worden automatisch voorbereid vóór opening, ook bij afwezigheid. Na opening geldt maximaal 15 minuten aankomsttijd. Daarna bepalen aanwezigheid en beweging de temperatuur. Ruimtes met een agenda blijven hun afspraken volgen."
         }
       },
       "regulation": {
@@ -293,7 +297,11 @@
           "screen_wind_speed_limit": "Maximale gemiddelde wind (km/u; vul fabrikantgrens in, leeg = niet beoordelen)",
           "screen_wind_gust_limit": "Maximale windstoot (km/u; vul fabrikantgrens in, leeg = niet beoordelen)",
           "screen_wind_calm_minutes": "Rustige periode vóór zonwering weer mag zakken (minuten; standaard 30)",
-          "screen_wind_max_age_minutes": "Maximale rapportleeftijd windweerdata (minuten; standaard 60)"
+          "screen_wind_max_age_minutes": "Maximale rapportleeftijd windweerdata (minuten; standaard 60)",
+          "office_schedule_entity": "Openingstijden kantoor (optioneel)"
+        },
+        "data_description": {
+          "office_schedule_entity": "Selecteer een schedule-helper. Gewone ruimtes worden automatisch voorbereid vóór opening, ook bij afwezigheid. Na opening geldt maximaal 15 minuten aankomsttijd. Daarna bepalen aanwezigheid en beweging de temperatuur. Ruimtes met een agenda blijven hun afspraken volgen."
         }
       },
       "zone_settings": {

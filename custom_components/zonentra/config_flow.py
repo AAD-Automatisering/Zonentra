@@ -109,6 +109,7 @@ def building_fields(limits: bool = True) -> dict:
         vol.Optional("changeover_wait_seconds"): numeric(0, 3600, 1, "s"),
         # Presence and motion (0.8), like Versatile Thermostat.
         vol.Optional("presence_entity"): entity_selector(list(PRESENCE_DOMAINS)),
+        vol.Optional("office_schedule_entity"): entity_selector("schedule"),
         vol.Optional("eco_heating_limit"): numeric(5, 35, unit="°C"),
         vol.Optional("eco_cooling_limit"): numeric(5, 35, unit="°C"),
         vol.Optional("away_heating_limit"): numeric(5, 35, unit="°C"),
@@ -167,6 +168,7 @@ CENTRAL_SECTIONS = {
     ),
     "presence": (
         "presence_entity",
+        "office_schedule_entity",
         "motion_delay_seconds",
         "motion_off_delay_minutes",
     ),

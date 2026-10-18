@@ -230,6 +230,21 @@ class ZoneDemandSensor(ZonentraDiagnosticSensor):
             "occupancy_reason": item.reason,
             "building_presence": item.presence,
             "motion": item.motion,
+            **self._office_schedule(),
+        }
+
+    def _office_schedule(self) -> dict:
+        plan = self.runtime.office_plans.get(self._zone.id)
+        if plan is None or plan.status == "not_configured":
+            return {}
+        return {
+            "office_schedule_status": plan.status,
+            "office_opening": plan.start.isoformat() if plan.start else None,
+            "office_prepare_at": plan.prepare_at.isoformat()
+            if plan.prepare_at
+            else None,
+            "office_lead_minutes": plan.lead_minutes,
+            "office_learned_rate": plan.learned,
         }
 
     def _thermostat(self) -> dict:

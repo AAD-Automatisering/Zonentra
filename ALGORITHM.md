@@ -720,6 +720,39 @@ geldt eco (`calendar_unknown`) of de afwezig-band bij gebouwafwezigheid; een her
 Expliciete presets Eco en Afwezig blijven gelden. Timers evalueren start en einde zonder nieuw
 sensorevent. `BookingSensor` toont alleen planning en schatting, geen afspraakinhoud.
 
+## Centrale openingstijden
+
+`office_schedule_entity` is één optionele centrale `schedule`-helper, te selecteren
+onder Aanwezigheid. Alle ruimtes zonder agenda volgen deze helper; agendaruimtes
+blijven uitsluitend hun afspraken volgen. Er bestaat geen ruimte-override voor
+het openingstijdenschema.
+
+Bij `off` is `next_event` de volgende opening. De bestaande adaptieve planner
+berekent hiervoor een voorbereidingsvenster vanuit de comfortband, kamertemperatuur,
+buitentemperatuur en geleerde tempos. Deze ruimtes leren ook thermische tempos,
+met dezelfde kwaliteitscontroles als agendaruimtes. Maximumtijd, beginsnelheden en
+buffer volgen de bestaande voorbereidingsinstellingen. Een actieve voorbereiding
+vraagt comfort en krijgt dezelfde begrensde groepsprioriteit als afspraakvoorbereiding;
+forecast-startmarges vervallen gedurende de voorbereiding.
+
+Bij `on` is `next_event` de sluiting. Alleen een voortgezette voorbereiding krijgt
+bij bewezen afwezigheid maximaal 15 minuten aankomstmarge vanaf de geplande opening,
+begrensd door de sluiting. Een herstart tijdens al geopende uren maakt geen nieuwe
+aankomst aan. De marge blijft bij configuratieherladen behouden voor dezelfde
+schema-entiteit. Een timer vlak vóór het werkelijke `on`-event houdt voorbereiding
+maximaal 30 seconden vast (`awaiting_opening`) om een uit/aan-cyclus te voorkomen.
+Zonder bevestigde opening stopt deze voorbereiding daarna. Aaneengesloten
+blokken die `on` blijven starten geen nieuwe marge.
+
+Na aankomst of afloop van de marge geldt de normale aanwezigheid/bewegingsregeling;
+ook buiten openingstijden blijft werkelijke aanwezigheid werken. Het schema verandert
+nooit gebouwpresentie. Onbekende, herstelde of onbruikbare schemabronnen vragen geen
+voorbereiding. Een verplaatste/verwijderde opening annuleert de vorige voorbereiding.
+Expliciete Eco/Afwezig, thermostaat-uit, uitgeschakelde regeling en groepsblokkades
+blijven leidend. Vloerverwarming en regen-/windbescherming houden hun eigen regels.
+Planning en starttijd staan in attributen van de ruimtevraagsensor en in diagnostiek;
+de schema-entiteit wordt bij export geredigeerd.
+
 ## Herstel en actieve timing na de vervolg-review
 
 De actieve uitvoering bewaakt minimale aan-/uit-tijd en heat/cool-omschakelpauze

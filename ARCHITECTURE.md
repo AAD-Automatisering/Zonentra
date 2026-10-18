@@ -13,7 +13,7 @@ apparatuur. De integratie heeft geen aanvullende runtime-dependencies.
 | Bronkwaliteit en klimaatvraag | `observations.py`, `temperature.py`, `demand.py`, `presence.py` |
 | Groepsbeslissingen en simulatie | `engine.py`, `decision.py`, `indoor.py`, `control.py`, `override.py` |
 | Regelplannen | `executor.py`, `thermostat.py`, `roomstate.py`, `shading.py`, `rain.py`, `wind.py`, `bookings.py`, `forecast.py`, `floor_heating.py` |
-| Home Assistant-lifecycle en uitvoering | `__init__.py`, `runtime.py`, `runtime_commands.py`, `runtime_timing.py`, `runtime_helpers.py`, `runtime_shading.py`, `runtime_bookings.py`, `runtime_floor.py` |
+| Home Assistant-lifecycle en uitvoering | `__init__.py`, `runtime.py`, `runtime_commands.py`, `runtime_timing.py`, `runtime_helpers.py`, `runtime_shading.py`, `runtime_bookings.py`, `runtime_office.py`, `runtime_floor.py` |
 | Entiteiten en diagnostiek | `entity.py`, `climate.py`, `sensor.py`, `number.py`, `switch.py`, `diagnostics.py` |
 
 Alle modules staan in `custom_components/zonentra`. Pure kernmodules berekenen
