@@ -15,12 +15,15 @@ from tests.test_thermostat_runtime import clear, mock_climate
 
 SCHEDULE = "schedule.office_hours"
 PRESENCE = "input_boolean.building_present"
+WORKDAY = "binary_sensor.workday"
 
 
-async def office(hass, *, start=45, temperature="21", **zone_fields):
+async def office(hass, *, start=45, temperature="21", workday=None, **zone_fields):
     opening = dt_util.utcnow() + timedelta(minutes=start)
     hass.states.async_set(SCHEDULE, "off", {"next_event": opening})
     hass.states.async_set(PRESENCE, "off")
+    if workday is not None:
+        hass.states.async_set(WORKDAY, workday)
     hass.states.async_set("sensor.west_temperature", temperature, CELSIUS)
     hass.states.async_set("sensor.outside", "15", CELSIUS)
     hass.states.async_set("climate.west_ac", "off", {"temperature": 22})
@@ -37,7 +40,11 @@ async def office(hass, *, start=45, temperature="21", **zone_fields):
     ] == ["schedule"]
     flow = await hass.config_entries.options.async_configure(
         flow["flow_id"],
-        {"office_schedule_entity": SCHEDULE, "presence_entity": PRESENCE},
+        {
+            "office_schedule_entity": SCHEDULE,
+            "presence_entity": PRESENCE,
+            **({"workday_entity": WORKDAY} if workday is not None else {}),
+        },
     )
     await hass.config_entries.options.async_configure(
         flow["flow_id"], {"next_step_id": "finish"}
@@ -286,3 +293,136 @@ async def test_schedule_transition_race_has_bounded_hold(hass, freezer):
     await later(hass, freezer, seconds=30)
     assert runtime.office_plans["west"].status == "unknown"
     assert runtime.zone_bands["west"][0] == "away"
+
+
+@pytest.mark.parametrize(
+    "entity", ["schedule.office", "sensor.workday", "binary_sensor", True]
+)
+def test_workday_requires_a_binary_sensor(entity):
+    with pytest.raises((ValueError, TypeError)):
+        build_model("test", "Test", {"building": {"workday_entity": entity}})
+
+
+async def test_workday_sensor_is_saved_followed_and_can_be_removed(hass):
+    central, room, _ = await office(hass, start=20, workday="off")
+    assert central.options["building"]["workday_entity"] == WORKDAY
+    runtime = central.runtime_data
+    assert WORKDAY in runtime.building.entity_ids
+    assert "workday_entity" not in room.options
+    assert runtime.office_plans["west"].status == "not_workday"
+    assert runtime.zone_bands["west"][0] == "away"
+    hass.states.async_set(WORKDAY, "on")
+    await hass.async_block_till_done()
+    assert runtime.office_plans["west"].active
+    hass.states.async_set(WORKDAY, "off")
+    await hass.async_block_till_done()
+    assert not runtime.office_plans["west"].active
+    flow = await open_section(hass, central, "presence")
+    flow = await hass.config_entries.options.async_configure(
+        flow["flow_id"],
+        {"office_schedule_entity": SCHEDULE, "presence_entity": PRESENCE},
+    )
+    await hass.config_entries.options.async_configure(
+        flow["flow_id"], {"next_step_id": "finish"}
+    )
+    await hass.async_block_till_done()
+    assert WORKDAY not in central.runtime_data.building.entity_ids
+    assert central.runtime_data.office_plans["west"].active
+
+
+@pytest.mark.parametrize(
+    "state,attributes",
+    [
+        ("unknown", {}),
+        ("unavailable", {}),
+        ("on", {"restored": True}),
+        ("on", {"assumed_state": True}),
+        (None, {}),
+    ],
+)
+async def test_unusable_workday_does_not_prepare_but_presence_still_works(
+    hass, state, attributes
+):
+    central, _, _ = await office(hass, start=20, workday="on")
+    assert central.runtime_data.office_plans["west"].active
+    if state is None:
+        hass.states.async_remove(WORKDAY)
+    else:
+        hass.states.async_set(WORKDAY, state, attributes)
+    await hass.async_block_till_done()
+    assert central.runtime_data.office_plans["west"].status == "workday_unknown"
+    assert central.runtime_data.zone_bands["west"][0] == "away"
+    hass.states.async_set(PRESENCE, "on")
+    await hass.async_block_till_done()
+    assert central.runtime_data.zone_bands["west"][0] == "comfort"
+
+
+async def test_holiday_cancels_arrival_grace_and_keeps_presence(hass, freezer):
+    central, _, opening = await office(hass, start=20, workday="on")
+    await later(hass, freezer, minutes=20)
+    hass.states.async_set(SCHEDULE, "on", {"next_event": opening + timedelta(hours=8)})
+    await hass.async_block_till_done()
+    assert central.runtime_data.office_plans["west"].status == "arrival_grace"
+    hass.states.async_set(WORKDAY, "off")
+    await hass.async_block_till_done()
+    assert central.runtime_data.office_plans["west"].status == "not_workday"
+    assert central.runtime_data.zone_bands["west"][0] == "away"
+    hass.states.async_set(PRESENCE, "on")
+    await hass.async_block_till_done()
+    assert central.runtime_data.zone_bands["west"][0] == "comfort"
+
+
+async def test_holiday_does_not_block_calendar_preparation(hass):
+    opening = dt_util.utcnow() + timedelta(minutes=20)
+    hass.states.async_set(CALENDAR, "off")
+    calendar_service(
+        hass,
+        {
+            CALENDAR: {
+                "events": [
+                    {
+                        "start": opening.isoformat(),
+                        "end": (opening + timedelta(hours=1)).isoformat(),
+                        "summary": "Meeting",
+                    }
+                ]
+            }
+        },
+    )
+    central, _, _ = await office(
+        hass, start=20, workday="off", calendar_entity=CALENDAR
+    )
+    assert central.runtime_data.office_plans["west"].status == "calendar_priority"
+    assert central.runtime_data.booking_plans["west"].active
+    assert central.runtime_data.zone_bands["west"][0] == "comfort"
+
+
+@pytest.mark.parametrize("workday", ["on", "off"])
+async def test_tomorrows_opening_is_reassessed_after_local_midnight(
+    hass, freezer, workday
+):
+    await hass.config.async_set_time_zone("Europe/Amsterdam")
+    freezer.move_to(
+        "2026-10-18T21:30:00+00:00"
+    )  # 23:30 local, opening tomorrow at 00:15.
+    central, _, _ = await office(hass, start=45, temperature="18", workday=workday)
+    runtime = central.runtime_data
+    assert not runtime.office_plans["west"].active
+    assert runtime.office_plans["west"].status == (
+        "waiting_for_workday" if workday == "on" else "not_workday"
+    )
+    await later(hass, freezer, minutes=30)
+    hass.states.async_set(WORKDAY, "on")
+    await hass.async_block_till_done()
+    assert runtime.office_plans["west"].active
+    hass.states.async_set(WORKDAY, "off")
+    await hass.async_block_till_done()
+    assert not runtime.office_plans["west"].active
+
+
+async def test_workday_entity_is_redacted_from_diagnostics(hass):
+    central, room, _ = await office(hass, start=20, workday="off")
+    for entry in (central, room):
+        exported = json.dumps(await async_get_config_entry_diagnostics(hass, entry))
+        assert WORKDAY not in exported
+        assert "not_workday" in exported

@@ -692,6 +692,8 @@ class BuildingRuntime(
         if (
             self.building.settings.office_schedule_entity
             == previous.building.settings.office_schedule_entity
+            and self.building.settings.workday_entity
+            == previous.building.settings.workday_entity
         ):
             self.office_plans = {
                 zone.id: previous.office_plans[zone.id]

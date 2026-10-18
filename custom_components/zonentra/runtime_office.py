@@ -29,6 +29,8 @@ class OfficeRuntimeMixin:
         plan = OfficePlan("not_configured")
         if entity and zone.calendar_entity:
             plan = OfficePlan("calendar_priority")
+        elif entity and (workday_plan := self._office_workday(sources, now)):
+            plan = workday_plan
         elif entity:
             source = sources.get(entity)
             state = self.hass.states.get(entity)
@@ -95,7 +97,34 @@ class OfficeRuntimeMixin:
             return replace(occupancy, mode="comfort", reason=f"office_{plan.status}")
         return occupancy
 
+    def _office_workday(self, sources, now):
+        """The optional binary sensor represents today, independently of hours."""
+        entity = self.building.settings.workday_entity
+        if not entity:
+            return None
+        source = sources.get(entity)
+        midnight = dt_util.start_of_local_day(dt_util.as_local(now) + timedelta(days=1))
+        if (
+            source is None
+            or not source.trustworthy
+            or source.state not in ("on", "off")
+        ):
+            return OfficePlan("workday_unknown", next_check=midnight)
+        if source.state == "off":
+            return OfficePlan("not_workday", next_check=midnight)
+        return None
+
     def _office_preparation(self, zone, sources, now, opening, previous):
+        if (
+            self.building.settings.workday_entity
+            and dt_util.as_local(opening).date() != dt_util.as_local(now).date()
+        ):
+            # Today's sensor cannot approve tomorrow's opening. Reassess after
+            # local midnight and on sensor changes, including across DST.
+            midnight = dt_util.start_of_local_day(
+                dt_util.as_local(now) + timedelta(days=1)
+            )
+            return OfficePlan("waiting_for_workday", start=opening, next_check=midnight)
         temperature = read(
             sources.get(zone.temperature_entity),
             "temperature",

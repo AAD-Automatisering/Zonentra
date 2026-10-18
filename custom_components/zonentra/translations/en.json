@@ -119,10 +119,12 @@
           "presence_entity": "Building presence (binary_sensor, input_boolean, alarm panel, person, group or zone)",
           "motion_delay_seconds": "Motion detection delay (seconds)",
           "motion_off_delay_minutes": "Time occupied after last motion (minutes)",
-          "office_schedule_entity": "Office opening hours (optional)"
+          "office_schedule_entity": "Office opening hours (optional)",
+          "workday_entity": "Workday sensor for today (optional)"
         },
         "data_description": {
-          "office_schedule_entity": "Select a schedule helper. Ordinary rooms prepare automatically before opening, including while absent. A maximum 15-minute arrival grace follows opening; presence and motion then determine comfort. Calendar rooms continue to follow their bookings."
+          "office_schedule_entity": "Select a schedule helper. Ordinary rooms prepare automatically before opening, including while absent. A maximum 15-minute arrival grace follows opening; presence and motion then determine comfort. Calendar rooms continue to follow their bookings.",
+          "workday_entity": "Separate from opening hours: on = workday, off = non-workday. Choose a sensor for today (offset 0). On non-workdays or with an unusable sensor, office preparation and arrival grace are skipped. Presence and calendar bookings still work. Without a sensor, only the schedule applies."
         },
         "submit": "Apply and return"
       },
@@ -308,12 +310,14 @@
           "screen_wind_gust_limit": "Maximum wind gust (km/h; enter manufacturer limit, empty = not checked)",
           "screen_wind_calm_minutes": "Calm hold before shading may lower again (minutes; default 30)",
           "screen_wind_max_age_minutes": "Maximum wind weather report age (minutes; default 60)",
-          "office_schedule_entity": "Office opening hours (optional)"
+          "office_schedule_entity": "Office opening hours (optional)",
+          "workday_entity": "Workday sensor for today (optional)"
         },
         "data_description": {
           "office_schedule_entity": "Select a schedule helper. Ordinary rooms prepare automatically before opening, including while absent. A maximum 15-minute arrival grace follows opening; presence and motion then determine comfort. Calendar rooms continue to follow their bookings.",
           "manual_override_enabled": "Pauses automatic control after manually switching on a linked air conditioner. With room regulation enabled, this also applies to manual switch-off and setpoint changes by a Home Assistant user. This is separate from temporary targets on the Zonentra thermostat.",
-          "setpoint_interval_seconds": "Used per air conditioner for both setpoint regulation and automatic fan speeds."
+          "setpoint_interval_seconds": "Used per air conditioner for both setpoint regulation and automatic fan speeds.",
+          "workday_entity": "Separate from opening hours: on = workday, off = non-workday. Choose a sensor for today (offset 0). On non-workdays or with an unusable sensor, office preparation and arrival grace are skipped. Presence and calendar bookings still work. Without a sensor, only the schedule applies."
         },
         "submit": "Apply and return"
       },

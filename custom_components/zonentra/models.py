@@ -121,6 +121,7 @@ class BuildingSettings:
     # 0.8 presence and motion (like Versatile Thermostat).
     presence_entity: str | None = None
     office_schedule_entity: str | None = None
+    workday_entity: str | None = None
     eco_heating_limit: float = 19.0
     eco_cooling_limit: float = 26.0
     away_heating_limit: float = 16.0
@@ -211,6 +212,7 @@ class Building:
                     "outdoor_temperature_entity",
                     "presence_entity",
                     "office_schedule_entity",
+                    "workday_entity",
                     "sun_power_entity",
                     "screen_block_entity",
                     "screen_rain_entity",
@@ -292,6 +294,7 @@ def build_model(building_id: str, name: str, topology: dict[str, Any]) -> Buildi
         _range(getattr(settings, key), 0, 3600)
     _entity(settings.presence_entity, PRESENCE_DOMAINS)
     _entity(settings.office_schedule_entity, ("schedule",))
+    _entity(settings.workday_entity, ("binary_sensor",))
     _validate_bands(settings, settings.hysteresis)
     _range(settings.motion_delay_seconds, 0, 600)
     _range(settings.motion_off_delay_minutes, 1, 240)

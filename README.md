@@ -136,6 +136,16 @@ snelheidsnamen en numerieke standen worden van laag naar hoog geordend; onbekend
 fabrikantstanden behouden hun volgorde. De thermostaat gebruikt gemelde activiteit
 zoals `idle` waar beschikbaar; `activity_source` maakt terugval op de gekozen modus zichtbaar.
 
+Onder **Aanwezigheid** kun je daarnaast een afzonderlijke **Werkdag-sensor voor
+vandaag** kiezen (offset 0). Het schema bepaalt de tijden; de sensor bepaalt of
+vandaag een werkdag is. Bij `off`, ontbrekende of onbetrouwbare sensorinformatie
+vervallen de kantoorvoorbereiding en aankomstmarge. Werkelijke aanwezigheid en
+agenda-afspraken blijven werken. Zonder werkdag-sensor verandert er niets.
+Een opening op een volgende dag wordt met deze sensor pas vanaf lokale middernacht
+beoordeeld: de waarde voor vandaag voorspelt geen feestdagen op andere datums.
+De sensor **Klimaatvraag** toont `not_workday`, `workday_unknown` of
+`waiting_for_workday` als reden voor het overslaan of uitstellen.
+
 Het centrale openingstijdenschema geldt voor alle ruimtes zonder agenda; er is
 geen instelling per ruimte voor het schema. De voorbereiding gebruikt temperatuurverschil,
 buitentemperatuur en geleerde opwarm-/afkoeltempo's. Het schema meldt geen aanwezigheid.

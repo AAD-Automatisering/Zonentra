@@ -735,6 +735,17 @@ onder Aanwezigheid. Alle ruimtes zonder agenda volgen deze helper; agendaruimtes
 blijven uitsluitend hun afspraken volgen. Er bestaat geen ruimte-override voor
 het openingstijdenschema.
 
+`workday_entity` is een afzonderlijke optionele centrale `binary_sensor` voor
+vandaag (offset 0). Zonder sensor verandert de planning niet. Met sensor mogen
+kantoorvoorbereiding en aankomstmarge alleen bij een betrouwbare `on`-state werken.
+`off` geeft `not_workday`; ontbrekende, unknown/unavailable, restored/assumed of
+ongeldige states geven `workday_unknown`. Deze blokkade verandert aanwezigheid,
+agenda-afspraken en de gewone temperatuurregeling niet. Sensorwijzigingen worden
+gevolgd en de planning wordt bij lokale middernacht opnieuw beoordeeld.
+Een opening op een andere lokale datum wacht tot middernacht
+(`waiting_for_workday`): de status van vandaag wordt niet gebruikt om een andere
+dag als werkdag te beschouwen.
+
 Bij `off` is `next_event` de volgende opening. De bestaande adaptieve planner
 berekent hiervoor een voorbereidingsvenster vanuit de comfortband, kamertemperatuur,
 buitentemperatuur en geleerde tempos. Deze ruimtes leren ook thermische tempos,
@@ -747,7 +758,7 @@ Bij `on` is `next_event` de sluiting. Alleen een voortgezette voorbereiding krij
 bij bewezen afwezigheid maximaal 15 minuten aankomstmarge vanaf de geplande opening,
 begrensd door de sluiting. Een herstart tijdens al geopende uren maakt geen nieuwe
 aankomst aan. De marge blijft bij configuratieherladen behouden voor dezelfde
-schema-entiteit. Een timer vlak vóór het werkelijke `on`-event houdt voorbereiding
+schema- én werkdagsensor-entiteit. Een timer vlak vóór het werkelijke `on`-event houdt voorbereiding
 maximaal 30 seconden vast (`awaiting_opening`) om een uit/aan-cyclus te voorkomen.
 Zonder bevestigde opening stopt deze voorbereiding daarna. Aaneengesloten
 blokken die `on` blijven starten geen nieuwe marge.
@@ -759,7 +770,7 @@ voorbereiding. Een verplaatste/verwijderde opening annuleert de vorige voorberei
 Expliciete Eco/Afwezig, thermostaat-uit, uitgeschakelde regeling en groepsblokkades
 blijven leidend. Vloerverwarming en regen-/windbescherming houden hun eigen regels.
 Planning en starttijd staan in attributen van de ruimtevraagsensor en in diagnostiek;
-de schema-entiteit wordt bij export geredigeerd.
+de schema- en werkdagsensor-entiteit worden bij export geredigeerd.
 
 ## Herstel en actieve timing na de vervolg-review
 
