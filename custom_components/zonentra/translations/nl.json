@@ -112,7 +112,8 @@
           "hysteresis": "Centrale temperatuurhysterese (°C)",
           "sensor_validation": "Centrale sensorvalidatie (state_based = standaard; update_based alleen voor periodiek rapporterende sensoren)",
           "max_age_seconds": "Centrale maximale updateleeftijd bij update_based (seconden; genegeerd bij state_based)"
-        }
+        },
+        "submit": "Toepassen en terug"
       },
       "presence": {
         "title": "Aanwezigheid",
@@ -125,7 +126,8 @@
         },
         "data_description": {
           "office_schedule_entity": "Selecteer een schedule-helper. Gewone ruimtes worden automatisch voorbereid vóór opening, ook bij afwezigheid. Na opening geldt maximaal 15 minuten aankomsttijd. Daarna bepalen aanwezigheid en beweging de temperatuur. Ruimtes met een agenda blijven hun afspraken volgen."
-        }
+        },
+        "submit": "Toepassen en terug"
       },
       "regulation": {
         "title": "Ruimteregeling",
@@ -141,7 +143,8 @@
           "window_delay_seconds": "Raam open: vertraging voordat de ruimte stopt (seconden)",
           "auto_fan_step": "Automatische ventilator: graden van het doel per ventilatorstand",
           "floor_heating_limit": "Vloerverwarming: vaste ondergrens kamertemperatuur (°C; standaard 16)"
-        }
+        },
+        "submit": "Toepassen en terug"
       },
       "screens": {
         "title": "Zonwering",
@@ -165,20 +168,23 @@
           "screen_wind_gust_limit": "Maximale windstoot (km/u; vul fabrikantgrens in, leeg = niet beoordelen)",
           "screen_wind_calm_minutes": "Rustige periode vóór zonwering weer mag zakken (minuten; standaard 30)",
           "screen_wind_max_age_minutes": "Maximale rapportleeftijd windweerdata (minuten; standaard 60)"
-        }
+        },
+        "submit": "Toepassen en terug"
       },
       "forecast": {
         "title": "Weersverwachting",
         "description": "De uurverwachting maakt een dag warm, neutraal of koud: op warme dagen gaat de zonwering vroeg omlaag, en verwarmen of koelen start later als het weer het werk doet. Drempels en marge stel je in op het centrale apparaat.",
         "data": {
           "weather_entity": "Weersverwachting (optioneel; warme/koude dagen voor zonwering en minder omschakelen tussen verwarmen en koelen)"
-        }
+        },
+        "submit": "Toepassen en terug"
       },
       "zone": {
         "title": "Ruimte",
         "data": {
           "record": "Bestaand item of nieuw toevoegen"
-        }
+        },
+        "submit": "Volgende"
       },
       "zone_details": {
         "title": "Ruimte",
@@ -208,13 +214,15 @@
           "use_building_preconditioning": "Gebruik centrale instellingen voor afspraakvoorbereiding",
           "use_building_floor_heating": "Centrale instellingen voor vloerverwarming gebruiken",
           "floor_heating_limit": "Vloerverwarming: vaste ondergrens kamertemperatuur (°C; standaard 16)"
-        }
+        },
+        "submit": "Toepassen en terug"
       },
       "group": {
         "title": "Buitenunitgroep",
         "data": {
           "record": "Bestaand item of nieuw toevoegen"
-        }
+        },
+        "submit": "Volgende"
       },
       "group_details": {
         "title": "Buitenunitgroep",
@@ -227,13 +235,15 @@
           "min_demand_score": "Minimale vraagscore bij tegengestelde vragen",
           "score_deadband": "Minimaal verschil bij tegengestelde warmte- en koelvraag",
           "max_age_seconds": "Maximale feedbackleeftijd (seconden; 0 = uit)"
-        }
+        },
+        "submit": "Toepassen en terug"
       },
       "equipment": {
         "title": "Apparatuur",
         "data": {
           "record": "Bestaand item of nieuw toevoegen"
-        }
+        },
+        "submit": "Volgende"
       },
       "equipment_details": {
         "title": "Apparatuur",
@@ -245,7 +255,8 @@
           "entity_id": "Fysieke entiteit (bij HVAC: de climate-entiteit van de binnenunit)",
           "zone_id": "Ruimte",
           "group_id": "Buitenunitgroep (alleen HVAC)"
-        }
+        },
+        "submit": "Toepassen en terug"
       },
       "building": {
         "title": "Centrale configuratie",
@@ -302,7 +313,8 @@
         },
         "data_description": {
           "office_schedule_entity": "Selecteer een schedule-helper. Gewone ruimtes worden automatisch voorbereid vóór opening, ook bij afwezigheid. Na opening geldt maximaal 15 minuten aankomsttijd. Daarna bepalen aanwezigheid en beweging de temperatuur. Ruimtes met een agenda blijven hun afspraken volgen."
-        }
+        },
+        "submit": "Toepassen en terug"
       },
       "zone_settings": {
         "title": "Ruimte",
@@ -329,7 +341,8 @@
           "calendar_entity": "Ruimteagenda (optioneel; adaptief verwarmen/koelen vóór afspraken)",
           "use_building_preconditioning": "Gebruik centrale instellingen voor afspraakvoorbereiding",
           "use_building_floor_heating": "Centrale instellingen voor vloerverwarming gebruiken"
-        }
+        },
+        "submit": "Opslaan"
       },
       "zone_parameters": {
         "title": "Eigen waarden ruimte",
@@ -345,7 +358,8 @@
           "preconditioning_heating_rate": "Starttempo verwarmen (°C/min; standaard 0,05, aangepast aan buitentemperatuur)",
           "preconditioning_cooling_rate": "Starttempo koelen (°C/min; standaard 0,05, aangepast aan buitentemperatuur)",
           "floor_heating_limit": "Vloerverwarming: vaste ondergrens kamertemperatuur (°C; standaard 16)"
-        }
+        },
+        "submit": "Opslaan"
       },
       "preconditioning": {
         "title": "Afspraakvoorbereiding",
@@ -355,7 +369,8 @@
           "preconditioning_buffer_minutes": "Veiligheidsmarge voor voorbereiding (minuten; standaard 10)",
           "preconditioning_heating_rate": "Starttempo verwarmen (°C/min; standaard 0,05, aangepast aan buitentemperatuur)",
           "preconditioning_cooling_rate": "Starttempo koelen (°C/min; standaard 0,05, aangepast aan buitentemperatuur)"
-        }
+        },
+        "submit": "Toepassen en terug"
       }
     },
     "error": {

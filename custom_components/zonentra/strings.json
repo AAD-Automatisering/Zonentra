@@ -112,7 +112,8 @@
           "hysteresis": "Central temperature hysteresis (°C)",
           "sensor_validation": "Central sensor validation (state_based = default; update_based only for periodically reporting sensors)",
           "max_age_seconds": "Central maximum update age for update_based (seconds; ignored by state_based)"
-        }
+        },
+        "submit": "Apply and return"
       },
       "presence": {
         "title": "Presence",
@@ -125,7 +126,8 @@
         },
         "data_description": {
           "office_schedule_entity": "Select a schedule helper. Ordinary rooms prepare automatically before opening, including while absent. A maximum 15-minute arrival grace follows opening; presence and motion then determine comfort. Calendar rooms continue to follow their bookings."
-        }
+        },
+        "submit": "Apply and return"
       },
       "regulation": {
         "title": "Room regulation",
@@ -141,7 +143,8 @@
           "window_delay_seconds": "Open window: delay before the room stops (seconds)",
           "auto_fan_step": "Automatic fan: °C from the target per fan speed step",
           "floor_heating_limit": "Floor heating: fixed minimum room temperature (°C; default 16)"
-        }
+        },
+        "submit": "Apply and return"
       },
       "screens": {
         "title": "Screens",
@@ -165,20 +168,23 @@
           "screen_wind_gust_limit": "Maximum wind gust (km/h; enter manufacturer limit, empty = not checked)",
           "screen_wind_calm_minutes": "Calm hold before shading may lower again (minutes; default 30)",
           "screen_wind_max_age_minutes": "Maximum wind weather report age (minutes; default 60)"
-        }
+        },
+        "submit": "Apply and return"
       },
       "forecast": {
         "title": "Weather forecast",
         "description": "The hourly forecast makes a day warm, neutral or cold: screens shade early on warm days, and heating or cooling starts later when the weather will do the work. Thresholds and margin are set on the central device.",
         "data": {
           "weather_entity": "Weather forecast (optional; warm/cold days for screens and fewer heat/cool changeovers)"
-        }
+        },
+        "submit": "Apply and return"
       },
       "zone": {
         "title": "Zone",
         "data": {
           "record": "Select existing or add new"
-        }
+        },
+        "submit": "Next"
       },
       "zone_details": {
         "title": "Zone",
@@ -208,13 +214,15 @@
           "use_building_preconditioning": "Use central meeting preparation settings",
           "use_building_floor_heating": "Use central floor heating settings",
           "floor_heating_limit": "Floor heating: fixed minimum room temperature (°C; default 16)"
-        }
+        },
+        "submit": "Apply and return"
       },
       "group": {
         "title": "Outdoor unit group",
         "data": {
           "record": "Select existing or add new"
-        }
+        },
+        "submit": "Next"
       },
       "group_details": {
         "title": "Outdoor unit group",
@@ -227,13 +235,15 @@
           "min_demand_score": "Minimum demand score for opposing requests",
           "score_deadband": "Minimum score difference for opposing heating and cooling requests",
           "max_age_seconds": "Maximum feedback age (seconds; 0 = disabled)"
-        }
+        },
+        "submit": "Apply and return"
       },
       "equipment": {
         "title": "Equipment",
         "data": {
           "record": "Select existing or add new"
-        }
+        },
+        "submit": "Next"
       },
       "equipment_details": {
         "title": "Equipment",
@@ -245,7 +255,8 @@
           "entity_id": "Physical entity (for HVAC: the indoor unit climate entity)",
           "zone_id": "Zone",
           "group_id": "Outdoor unit group (HVAC only)"
-        }
+        },
+        "submit": "Apply and return"
       },
       "building": {
         "title": "Central configuration",
@@ -302,7 +313,8 @@
         },
         "data_description": {
           "office_schedule_entity": "Select a schedule helper. Ordinary rooms prepare automatically before opening, including while absent. A maximum 15-minute arrival grace follows opening; presence and motion then determine comfort. Calendar rooms continue to follow their bookings."
-        }
+        },
+        "submit": "Apply and return"
       },
       "zone_settings": {
         "title": "Zone",
@@ -329,7 +341,8 @@
           "calendar_entity": "Room calendar (optional; adaptive heating/cooling before meetings)",
           "use_building_preconditioning": "Use central meeting preparation settings",
           "use_building_floor_heating": "Use central floor heating settings"
-        }
+        },
+        "submit": "Save"
       },
       "zone_parameters": {
         "title": "Local zone values",
@@ -345,7 +358,8 @@
           "preconditioning_heating_rate": "Initial heating rate (°C/min; default 0.05, adjusted for outdoor temperature)",
           "preconditioning_cooling_rate": "Initial cooling rate (°C/min; default 0.05, adjusted for outdoor temperature)",
           "floor_heating_limit": "Floor heating: fixed minimum room temperature (°C; default 16)"
-        }
+        },
+        "submit": "Save"
       },
       "preconditioning": {
         "title": "Meeting preparation",
@@ -355,7 +369,8 @@
           "preconditioning_buffer_minutes": "Preparation safety margin (minutes; default 10)",
           "preconditioning_heating_rate": "Initial heating rate (°C/min; default 0.05, adjusted for outdoor temperature)",
           "preconditioning_cooling_rate": "Initial cooling rate (°C/min; default 0.05, adjusted for outdoor temperature)"
-        }
+        },
+        "submit": "Apply and return"
       }
     },
     "error": {
