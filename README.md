@@ -146,6 +146,35 @@ Werk bij via HACS, herstart Home Assistant en herlaad de browser.
   instellingen, vervang het door een centrale configuratie met aparte ruimtes en
   pas verwijzingen naar gewijzigde entity-ID's aan.
 
+## Builds en versies
+
+Iedere push en pull request doorloopt **Build and release** in GitHub Actions:
+versiecontrole, Ruff, tests en een downloadbaar `zonentra.zip` met buildinformatie.
+Alleen een geslaagde build van de actuele `main` publiceert automatisch een nieuwe
+patchrelease, bijvoorbeeld `0.13.6 → 0.13.7`. Ook wijzigingen aan alleen documentatie
+of tests krijgen daarmee een patchrelease. Oudere builds worden overgeslagen als
+`main` inmiddels verder is.
+
+De releasejob verhoogt `manifest.json` en `pyproject.toml` samen, maakt een
+releasecommit en een tag met exact hetzelfde nummer, en publiceert daarna een
+GitHub-release met gegenereerde release notes, ZIP en commit-/buildinformatie.
+HACS gebruikt de code van die releasetag; de ZIP is daarnaast als download beschikbaar.
+Mislukte tests publiceren niets. Een opnieuw uitgevoerde job hergebruikt zijn eigen
+versie als de releasecommit al was gepusht, zodat een mislukte upload geen extra
+versienummer kost. De standaard `GITHUB_TOKEN` voorkomt een buildlus door de
+releasecommit.
+
+Voor een bewuste minor- of majorrelease kies je **Actions → Build and release →
+Run workflow**, branch `main`, en `minor` of `major`. Een gewone push gebruikt altijd
+`patch`. De workflow heeft voor de releasejob schrijfrechten op `main` en tags nodig;
+bestaande branchbeveiliging wordt niet omzeild. Haal vóór je volgende push de
+releasecommit op (`git pull --ff-only` als je lokaal nog geen nieuwe commits hebt).
+
+Lokaal controleren en bouwen kan met `python scripts/release.py check` en
+`python scripts/release.py build`. De artifactnaam bevat het GitHub-buildnummer;
+`build-info.json` koppelt het pakket aan versie, commit en workflowrun. Alleen een
+gepubliceerde release verandert de officiële HACS-versie.
+
 ## Diagnostiek en privacy
 
 De sensoren tonen klimaatvraag, plannen, blokkades en commandobevestigingen.

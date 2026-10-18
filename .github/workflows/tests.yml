@@ -1,14 +1,89 @@
-name: Tests
-on: [push, pull_request]
+name: Build and release
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: Version increment (pushes to main always use patch)
+        type: choice
+        options: [patch, minor, major]
+        default: patch
+
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-python@v5
         with:
           python-version: '3.14'
       - run: pip install -r requirements-test.txt
+      - run: python scripts/release.py check
       - run: ruff check .
       - run: ruff format --check .
       - run: pytest -q
+      - run: pytest -q tests/review_probes.py
+      - name: Build integration
+        run: python scripts/release.py build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: zonentra-build-${{ github.run_number }}-${{ github.run_attempt }}
+          path: dist/
+          if-no-files-found: error
+          retention-days: 14
+
+  release:
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: zonentra-release-main
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+      - name: Configure release author
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+      - name: Prepare version, build and tag
+        id: prepare
+        env:
+          BUMP: ${{ inputs.bump || 'patch' }}
+        run: python scripts/release.py prepare --part "$BUMP"
+      - name: Publish GitHub release
+        if: steps.prepare.outputs.publish == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.prepare.outputs.version }}
+        run: |
+          if gh release view "$VERSION" --json isDraft > dist/release-state.json; then
+            if python -c 'import json; import sys; sys.exit(json.load(open("dist/release-state.json"))["isDraft"])'; then
+              echo "Release $VERSION is already published." >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            gh release upload "$VERSION" dist/zonentra.zip dist/build-info.json --clobber
+          else
+            gh release create "$VERSION" dist/zonentra.zip dist/build-info.json \
+              --verify-tag --title "Zonentra $VERSION" --generate-notes --draft
+          fi
+          gh release edit "$VERSION" --draft=false --latest
+          gh release view "$VERSION" --json url --jq '.url' >> "$GITHUB_STEP_SUMMARY"
+      - name: Explain superseded build
+        if: steps.prepare.outputs.publish != 'true'
+        run: echo 'Release skipped because main already contains a newer build.' >> "$GITHUB_STEP_SUMMARY"
