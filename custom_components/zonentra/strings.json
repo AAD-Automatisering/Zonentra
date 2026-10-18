@@ -30,12 +30,9 @@
           "use_building_limits": "Use central climate limits",
           "use_building_parameters": "Use central regulation parameters",
           "occupancy_entity": "Motion sensor (optional; without motion the zone uses the eco band)",
-          "humidity_entity": "Humidity (optional)",
-          "co2_entity": "CO₂ sensor (optional)",
           "contact_entities": "Window and door contacts (optional)",
           "floor_heating_entities": "Floor thermostats with room temperature setpoint (climate; legacy number observation only)",
           "shading_entities": "Shading (optional)",
-          "ventilation_entities": "Ventilation (optional)",
           "vane_entity": "Vane (optional; select, number or switch entity of the indoor unit)",
           "vane_cool_value": "Vane when cooling (up): option, number, or on/off for a switch",
           "vane_heat_value": "Vane when heating (down): option, number, or on/off for a switch",
@@ -133,18 +130,22 @@
         "title": "Room regulation",
         "description": "Only applies to rooms whose Room regulation switch is on, and to the outdoor unit stand control.",
         "data": {
-          "manual_override_enabled": "Allow manual override via the room controller",
-          "manual_override_duration_minutes": "Manual override duration (minutes, 5–120)",
+          "manual_override_enabled": "Temporarily respect manual operation of linked air conditioners",
+          "manual_override_duration_minutes": "Automatic control pause after manual operation (minutes, 5–120)",
           "min_on_seconds": "Minimum indoor unit on-time before switching off (seconds; comfort)",
           "min_off_seconds": "Minimum indoor unit off-time before switching on (seconds; safety, check manufacturer)",
           "changeover_wait_seconds": "Wait between stopping and the opposite mode on a group switch (seconds; safety)",
           "setpoint_max_offset": "Maximum setpoint correction of an indoor unit (°C)",
-          "setpoint_interval_seconds": "Minimum time between setpoint changes (seconds)",
+          "setpoint_interval_seconds": "Minimum time between setpoint or fan speed changes (seconds)",
           "window_delay_seconds": "Open window: delay before the room stops (seconds)",
           "auto_fan_step": "Automatic fan: °C from the target per fan speed step",
           "floor_heating_limit": "Floor heating: fixed minimum room temperature (°C; default 16)"
         },
-        "submit": "Apply and return"
+        "submit": "Apply and return",
+        "data_description": {
+          "manual_override_enabled": "Pauses automatic control after manually switching on a linked air conditioner. With room regulation enabled, this also applies to manual switch-off and setpoint changes by a Home Assistant user. This is separate from temporary targets on the Zonentra thermostat.",
+          "setpoint_interval_seconds": "Used per air conditioner for both setpoint regulation and automatic fan speeds."
+        }
       },
       "screens": {
         "title": "Screens",
@@ -196,8 +197,6 @@
           "occupancy_entity": "Motion sensor (optional; without motion the zone uses the eco band)",
           "heating_limit": "Heating limit (°C)",
           "cooling_limit": "Cooling limit (°C)",
-          "humidity_entity": "Humidity (optional)",
-          "co2_entity": "CO₂ sensor (optional)",
           "contact_entities": "Window and door contacts (optional)",
           "weight": "Zone weight",
           "hysteresis": "Temperature hysteresis (°C)",
@@ -269,8 +268,8 @@
           "hysteresis": "Central temperature hysteresis (°C)",
           "sensor_validation": "Central sensor validation (state_based = default; update_based only for periodically reporting sensors)",
           "max_age_seconds": "Central maximum update age for update_based (seconds; ignored by state_based)",
-          "manual_override_enabled": "Allow manual override via the room controller",
-          "manual_override_duration_minutes": "Manual override duration (minutes, 5–120)",
+          "manual_override_enabled": "Temporarily respect manual operation of linked air conditioners",
+          "manual_override_duration_minutes": "Automatic control pause after manual operation (minutes, 5–120)",
           "min_on_seconds": "Minimum indoor unit on-time before switching off (seconds; comfort)",
           "min_off_seconds": "Minimum indoor unit off-time before switching on (seconds; safety, check manufacturer)",
           "changeover_wait_seconds": "Wait between stopping and the opposite mode on a group switch (seconds; safety)",
@@ -282,7 +281,7 @@
           "motion_delay_seconds": "Motion detection delay (seconds)",
           "motion_off_delay_minutes": "Time occupied after last motion (minutes)",
           "setpoint_max_offset": "Room regulation: maximum setpoint correction of an indoor unit (°C)",
-          "setpoint_interval_seconds": "Room regulation: minimum time between setpoint changes (seconds)",
+          "setpoint_interval_seconds": "Minimum time between setpoint or fan speed changes (seconds)",
           "window_delay_seconds": "Open window: delay before the room stops (seconds)",
           "sun_power_entity": "Screens: solar power sensor (sunshine)",
           "sun_power_threshold": "Screens: solar power above which the sun shines (W)",
@@ -312,7 +311,9 @@
           "office_schedule_entity": "Office opening hours (optional)"
         },
         "data_description": {
-          "office_schedule_entity": "Select a schedule helper. Ordinary rooms prepare automatically before opening, including while absent. A maximum 15-minute arrival grace follows opening; presence and motion then determine comfort. Calendar rooms continue to follow their bookings."
+          "office_schedule_entity": "Select a schedule helper. Ordinary rooms prepare automatically before opening, including while absent. A maximum 15-minute arrival grace follows opening; presence and motion then determine comfort. Calendar rooms continue to follow their bookings.",
+          "manual_override_enabled": "Pauses automatic control after manually switching on a linked air conditioner. With room regulation enabled, this also applies to manual switch-off and setpoint changes by a Home Assistant user. This is separate from temporary targets on the Zonentra thermostat.",
+          "setpoint_interval_seconds": "Used per air conditioner for both setpoint regulation and automatic fan speeds."
         },
         "submit": "Apply and return"
       },
@@ -328,12 +329,9 @@
           "use_building_limits": "Use central climate limits",
           "use_building_parameters": "Use central regulation parameters",
           "occupancy_entity": "Motion sensor (optional; without motion the zone uses the eco band)",
-          "humidity_entity": "Humidity (optional)",
-          "co2_entity": "CO₂ sensor (optional)",
           "contact_entities": "Window and door contacts (optional)",
           "floor_heating_entities": "Floor thermostats with room temperature setpoint (climate; legacy number observation only)",
           "shading_entities": "Shading (optional)",
-          "ventilation_entities": "Ventilation (optional)",
           "vane_entity": "Vane (optional; select, number or switch entity of the indoor unit)",
           "vane_cool_value": "Vane when cooling (up): option, number, or on/off for a switch",
           "vane_heat_value": "Vane when heating (down): option, number, or on/off for a switch",
@@ -382,7 +380,6 @@
           "zone_regulation": "Regulation parameters",
           "zone_floor_heating": "Floor heating",
           "zone_screens": "Screens",
-          "zone_ventilation": "Ventilation",
           "zone_preconditioning": "Calendar and meeting preparation",
           "finish": "Save"
         }
@@ -403,8 +400,6 @@
         "data": {
           "temperature_entity": "Room temperature sensor",
           "occupancy_entity": "Motion sensor (optional; without motion the zone uses the eco band)",
-          "humidity_entity": "Humidity (optional)",
-          "co2_entity": "CO₂ sensor (optional)",
           "contact_entities": "Window and door contacts (optional)"
         },
         "submit": "Apply and return"
@@ -448,14 +443,6 @@
         "data": {
           "shading_entities": "Shading (optional)",
           "facade": "Facade of the screens (optional)"
-        },
-        "submit": "Apply and return"
-      },
-      "zone_ventilation": {
-        "title": "Ventilation",
-        "description": "Link this room’s fans or ventilation switches.",
-        "data": {
-          "ventilation_entities": "Ventilation (optional)"
         },
         "submit": "Apply and return"
       },

@@ -40,6 +40,16 @@ NEW_BUILDING_DEFAULTS = {
 def migrate_options(options: dict) -> dict:
     """Keep existing room policy explicit; never guess a shared weather source."""
     result = deepcopy(options)
+    # Remove obsolete observation-only links and legacy ventilation equipment
+    # before validation, without touching the physical entities.
+    for field in ("ventilation_entities", "humidity_entity", "co2_entity"):
+        result.pop(field, None)
+    if isinstance(result.get("equipment"), list):
+        result["equipment"] = [
+            item
+            for item in result["equipment"]
+            if not isinstance(item, dict) or item.get("kind") != "ventilation"
+        ]
     _remove_limit_entities(result)
     if "id" in result:
         _room_policy(result)
@@ -51,6 +61,8 @@ def migrate_options(options: dict) -> dict:
     outside = set(settings.get("outdoor_temperature_candidates", []))
     ages = []
     for zone in result.get("zones", []):
+        for field in ("ventilation_entities", "humidity_entity", "co2_entity"):
+            zone.pop(field, None)
         _remove_limit_entities(zone)
         _room_policy(zone)
         zone.pop("controller_entity", None)

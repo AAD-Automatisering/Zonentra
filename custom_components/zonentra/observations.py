@@ -120,14 +120,6 @@ def read(
         elif unit != "°C":
             return result(None, "unreliable", "unsupported_unit")
         low, high = (-50, 65) if kind == "temperature" else (5, 35)
-    elif kind == "humidity":
-        low, high = 0, 100
-        if unit != "%":
-            return result(None, "unreliable", "unsupported_unit")
-    elif kind == "co2":
-        low, high = 0, 10000
-        if unit != "ppm":
-            return result(None, "unreliable", "unsupported_unit")
     else:
         raise ValueError(f"Unknown reading kind: {kind}")
     if not low <= value <= high:

@@ -20,8 +20,6 @@ class ZoneSnapshot:
     temperature: Reading
     heating_limit: Reading
     cooling_limit: Reading
-    humidity: Reading
-    co2: Reading
     outdoor_temperature: Reading
     occupancy: Reading
     contacts: tuple[Reading, ...]
@@ -94,8 +92,6 @@ def collect_zone(
         numeric("temperature_entity", "temperature"),
         heating,
         cooling,
-        numeric("humidity_entity", "humidity"),
-        numeric("co2_entity", "co2"),
         outdoor_temperature
         if outdoor_temperature is not None
         else read(

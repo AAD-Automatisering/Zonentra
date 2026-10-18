@@ -23,8 +23,6 @@ ZONE_ENTITY_FIELDS = (
     "temperature_entity",
     "occupancy_entity",
     "calendar_entity",
-    "humidity_entity",
-    "co2_entity",
     "vane_entity",
 )
 VANE_DOMAINS = (
@@ -51,8 +49,6 @@ class Zone:
     preconditioning_cooling_rate: float = 0.05
     heating_limit: float | None = None
     cooling_limit: float | None = None
-    humidity_entity: str | None = None
-    co2_entity: str | None = None
     contact_entities: tuple[str, ...] = ()
     group_id: str | None = None
     weight: float = 1.0
@@ -395,7 +391,6 @@ def build_model(building_id: str, name: str, topology: dict[str, Any]) -> Buildi
         "hvac": ("climate",),
         "floor_heating": ("climate", "number"),
         "shading": ("cover",),
-        "ventilation": ("fan", "switch"),
     }
     equipment_models = []
     for item in equipment:

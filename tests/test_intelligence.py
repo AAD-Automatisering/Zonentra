@@ -145,8 +145,6 @@ def test_fahrenheit_and_optional_context():
     sources["sensor.room_0"] = SourceState("68", "°F", NOW)
     zone = replace(
         building.zones[0],
-        humidity_entity="sensor.humidity",
-        co2_entity="sensor.co2",
         contact_entities=("binary_sensor.window",),
     )
     building = replace(building, zones=(zone,))
@@ -154,7 +152,6 @@ def test_fahrenheit_and_optional_context():
     assert snapshot.temperature.value == 20
     assert snapshot.occupancy.value is None and snapshot.occupancy.quality == "missing"
     assert snapshot.contacts[0].quality == "missing"
-    assert snapshot.humidity.quality == snapshot.co2.quality == "missing"
     assert calculate_demand(zone, snapshot).demand == "heating_demand"
 
 
@@ -320,11 +317,6 @@ def test_restored_equipment_is_insufficient_data():
 @pytest.mark.parametrize(
     ("kind", "value", "unit", "quality"),
     [
-        ("humidity", "45", "%", "valid"),
-        ("humidity", "110", "%", "unreliable"),
-        ("co2", "900", "ppm", "valid"),
-        ("co2", "-1", "ppm", "unreliable"),
-        ("co2", "900", "%", "unreliable"),
         ("occupancy", "unavailable", None, "unavailable"),
     ],
 )

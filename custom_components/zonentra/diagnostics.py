@@ -48,8 +48,6 @@ SOURCE_FIELDS = (
     "temperature",
     "heating_limit",
     "cooling_limit",
-    "humidity",
-    "co2",
     "outdoor_temperature",
 )
 

@@ -226,7 +226,18 @@ async def configure_zone(hass, entry, data):
         result["flow_id"], {"record": "open_office"}
     )
     assert "sensor_validation" in result["data_schema"].schema
-    return result, await hass.config_entries.options.async_configure(
+    initial = result
+    if (
+        "max_age_seconds" in data
+        and "max_age_seconds" not in result["data_schema"].schema
+    ):
+        result = await hass.config_entries.options.async_configure(
+            result["flow_id"],
+            {key: value for key, value in data.items() if key != "max_age_seconds"},
+        )
+        assert result["type"] == FlowResultType.FORM
+        assert "max_age_seconds" in result["data_schema"].schema
+    return initial, await hass.config_entries.options.async_configure(
         result["flow_id"], data
     )
 
@@ -304,6 +315,13 @@ async def test_building_strategy_option_and_diagnostics(hass):
         "sensor_validation": "update_based",
         "max_age_seconds": 0,
     }
+    assert "max_age_seconds" not in result["data_schema"].schema
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"],
+        {key: value for key, value in data.items() if key != "max_age_seconds"},
+    )
+    assert result["type"] == FlowResultType.FORM
+    assert "max_age_seconds" in result["data_schema"].schema
     result = await hass.config_entries.options.async_configure(result["flow_id"], data)
     assert result["errors"] == {"base": "invalid_parameters"}
     result = await hass.config_entries.options.async_configure(

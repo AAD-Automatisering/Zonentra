@@ -30,12 +30,9 @@
           "use_building_limits": "Centrale klimaatgrenzen gebruiken",
           "use_building_parameters": "Centrale regelparameters gebruiken",
           "occupancy_entity": "Bewegingssensor (optioneel; zonder beweging geldt de eco-band)",
-          "humidity_entity": "Luchtvochtigheid (optioneel)",
-          "co2_entity": "CO₂-sensor (optioneel)",
           "contact_entities": "Raam- en deurcontacten (optioneel)",
           "floor_heating_entities": "Vloerthermostaten met kamertemperatuursetpoint (climate; oude number alleen observatie)",
           "shading_entities": "Zonwering (optioneel)",
-          "ventilation_entities": "Ventilatie (optioneel)",
           "vane_entity": "Lamel (optioneel; select-, number- of schakelaar-entiteit van de binnenunit)",
           "vane_cool_value": "Lamel bij koelen (omhoog): keuze, getal, of on/off bij een schakelaar",
           "vane_heat_value": "Lamel bij verwarmen (omlaag): keuze, getal, of on/off bij een schakelaar",
@@ -133,18 +130,22 @@
         "title": "Ruimteregeling",
         "description": "Geldt alleen voor ruimtes waarvan de schakelaar Ruimteregeling aan staat, en voor de standregeling van de buitenunits.",
         "data": {
-          "manual_override_enabled": "Handmatige bediening via de roomcontroller toestaan",
-          "manual_override_duration_minutes": "Duur handmatige bediening (minuten, 5–120)",
+          "manual_override_enabled": "Handmatige bediening van gekoppelde airco’s tijdelijk respecteren",
+          "manual_override_duration_minutes": "Duur van de automatische regelpauze na handmatige bediening (minuten, 5–120)",
           "min_on_seconds": "Minimale inschakeltijd binnenunit vóór uitschakelen (seconden; comfort)",
           "min_off_seconds": "Minimale uitschakeltijd binnenunit vóór inschakelen (seconden; veiligheid, controleer fabrikant)",
           "changeover_wait_seconds": "Wachttijd tussen stoppen en tegengestelde modus bij groepsomschakeling (seconden; veiligheid)",
           "setpoint_max_offset": "Maximale setpointcorrectie van een binnenunit (°C)",
-          "setpoint_interval_seconds": "Minimale tijd tussen setpointwijzigingen (seconden)",
+          "setpoint_interval_seconds": "Minimale tijd tussen setpoint- of ventilatorstandwijzigingen (seconden)",
           "window_delay_seconds": "Raam open: vertraging voordat de ruimte stopt (seconden)",
           "auto_fan_step": "Automatische ventilator: graden van het doel per ventilatorstand",
           "floor_heating_limit": "Vloerverwarming: vaste ondergrens kamertemperatuur (°C; standaard 16)"
         },
-        "submit": "Toepassen en terug"
+        "submit": "Toepassen en terug",
+        "data_description": {
+          "manual_override_enabled": "Pauzeert automatische aansturing na handmatig inschakelen van een gekoppelde airco. Bij ingeschakelde ruimteregeling geldt dit ook voor handmatig uitschakelen en temperatuurwijzigingen door een Home Assistant-gebruiker. Dit staat los van tijdelijke temperatuurdoelen op de Zonentra-thermostaat.",
+          "setpoint_interval_seconds": "Wordt per airco gebruikt voor zowel setpointregeling als automatische ventilatorstanden."
+        }
       },
       "screens": {
         "title": "Zonwering",
@@ -196,8 +197,6 @@
           "occupancy_entity": "Bewegingssensor (optioneel; zonder beweging geldt de eco-band)",
           "heating_limit": "Verwarmingsgrens (°C)",
           "cooling_limit": "Koelgrens (°C)",
-          "humidity_entity": "Luchtvochtigheid (optioneel)",
-          "co2_entity": "CO₂-sensor (optioneel)",
           "contact_entities": "Raam- en deurcontacten (optioneel)",
           "weight": "Ruimteweging",
           "hysteresis": "Temperatuurhysterese (°C)",
@@ -269,8 +268,8 @@
           "hysteresis": "Centrale temperatuurhysterese (°C)",
           "sensor_validation": "Centrale sensorvalidatie (state_based = standaard; update_based alleen voor periodiek rapporterende sensoren)",
           "max_age_seconds": "Centrale maximale updateleeftijd bij update_based (seconden; genegeerd bij state_based)",
-          "manual_override_enabled": "Handmatige bediening via de roomcontroller toestaan",
-          "manual_override_duration_minutes": "Duur handmatige bediening (minuten, 5–120)",
+          "manual_override_enabled": "Handmatige bediening van gekoppelde airco’s tijdelijk respecteren",
+          "manual_override_duration_minutes": "Duur van de automatische regelpauze na handmatige bediening (minuten, 5–120)",
           "min_on_seconds": "Minimale inschakeltijd binnenunit vóór uitschakelen (seconden; comfort)",
           "min_off_seconds": "Minimale uitschakeltijd binnenunit vóór inschakelen (seconden; veiligheid, controleer fabrikant)",
           "changeover_wait_seconds": "Wachttijd tussen stoppen en tegengestelde modus bij groepsomschakeling (seconden; veiligheid)",
@@ -282,7 +281,7 @@
           "motion_delay_seconds": "Bewegingsdetectie-vertraging (seconden)",
           "motion_off_delay_minutes": "Ruimte bezet na laatste beweging (minuten)",
           "setpoint_max_offset": "Ruimteregeling: maximale setpointcorrectie van een binnenunit (°C)",
-          "setpoint_interval_seconds": "Ruimteregeling: minimale tijd tussen setpointwijzigingen (seconden)",
+          "setpoint_interval_seconds": "Minimale tijd tussen setpoint- of ventilatorstandwijzigingen (seconden)",
           "window_delay_seconds": "Raam open: vertraging voordat de ruimte stopt (seconden)",
           "sun_power_entity": "Zonwering: vermogen zonnepanelen (zon schijnt)",
           "sun_power_threshold": "Zonwering: vermogen waarboven de zon schijnt (W)",
@@ -312,7 +311,9 @@
           "office_schedule_entity": "Openingstijden kantoor (optioneel)"
         },
         "data_description": {
-          "office_schedule_entity": "Selecteer een schedule-helper. Gewone ruimtes worden automatisch voorbereid vóór opening, ook bij afwezigheid. Na opening geldt maximaal 15 minuten aankomsttijd. Daarna bepalen aanwezigheid en beweging de temperatuur. Ruimtes met een agenda blijven hun afspraken volgen."
+          "office_schedule_entity": "Selecteer een schedule-helper. Gewone ruimtes worden automatisch voorbereid vóór opening, ook bij afwezigheid. Na opening geldt maximaal 15 minuten aankomsttijd. Daarna bepalen aanwezigheid en beweging de temperatuur. Ruimtes met een agenda blijven hun afspraken volgen.",
+          "manual_override_enabled": "Pauzeert automatische aansturing na handmatig inschakelen van een gekoppelde airco. Bij ingeschakelde ruimteregeling geldt dit ook voor handmatig uitschakelen en temperatuurwijzigingen door een Home Assistant-gebruiker. Dit staat los van tijdelijke temperatuurdoelen op de Zonentra-thermostaat.",
+          "setpoint_interval_seconds": "Wordt per airco gebruikt voor zowel setpointregeling als automatische ventilatorstanden."
         },
         "submit": "Toepassen en terug"
       },
@@ -328,12 +329,9 @@
           "use_building_limits": "Centrale klimaatgrenzen gebruiken",
           "use_building_parameters": "Centrale regelparameters gebruiken",
           "occupancy_entity": "Bewegingssensor (optioneel; zonder beweging geldt de eco-band)",
-          "humidity_entity": "Luchtvochtigheid (optioneel)",
-          "co2_entity": "CO₂-sensor (optioneel)",
           "contact_entities": "Raam- en deurcontacten (optioneel)",
           "floor_heating_entities": "Vloerthermostaten met kamertemperatuursetpoint (climate; oude number alleen observatie)",
           "shading_entities": "Zonwering (optioneel)",
-          "ventilation_entities": "Ventilatie (optioneel)",
           "vane_entity": "Lamel (optioneel; select-, number- of schakelaar-entiteit van de binnenunit)",
           "vane_cool_value": "Lamel bij koelen (omhoog): keuze, getal, of on/off bij een schakelaar",
           "vane_heat_value": "Lamel bij verwarmen (omlaag): keuze, getal, of on/off bij een schakelaar",
@@ -382,7 +380,6 @@
           "zone_regulation": "Regelparameters",
           "zone_floor_heating": "Vloerverwarming",
           "zone_screens": "Zonwering",
-          "zone_ventilation": "Ventilatie",
           "zone_preconditioning": "Agenda en afspraakvoorbereiding",
           "finish": "Opslaan"
         }
@@ -403,8 +400,6 @@
         "data": {
           "temperature_entity": "Ruimtetemperatuursensor",
           "occupancy_entity": "Bewegingssensor (optioneel; zonder beweging geldt de eco-band)",
-          "humidity_entity": "Luchtvochtigheid (optioneel)",
-          "co2_entity": "CO₂-sensor (optioneel)",
           "contact_entities": "Raam- en deurcontacten (optioneel)"
         },
         "submit": "Toepassen en terug"
@@ -448,14 +443,6 @@
         "data": {
           "shading_entities": "Zonwering (optioneel)",
           "facade": "Gevel van de zonwering (optioneel)"
-        },
-        "submit": "Toepassen en terug"
-      },
-      "zone_ventilation": {
-        "title": "Ventilatie",
-        "description": "Koppel de ventilatoren of ventilatieschakelaars van deze ruimte.",
-        "data": {
-          "ventilation_entities": "Ventilatie (optioneel)"
         },
         "submit": "Toepassen en terug"
       },

@@ -3,6 +3,7 @@
 from dataclasses import replace
 from datetime import timedelta
 
+import pytest
 from homeassistant.core import Context
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.util import dt as dt_util
@@ -545,4 +546,34 @@ async def test_standalone_wait_restarts_after_unavailable(hass, freezer):
     assert not mocks["set_hvac_mode"]
     await later(hass, freezer, seconds=2)
     assert [c.data["hvac_mode"] for c in mocks["set_hvac_mode"]] == ["cool"]
+    runtime.close()
+
+
+@pytest.mark.parametrize("domain", ["switch", "input_boolean"])
+async def test_vane_switch_off_without_feedback_retries_after_backoff(
+    hass, freezer, domain
+):
+    await mock_climate(hass)
+    calls = async_mock_service(hass, domain, "turn_off")
+    entity_id = f"{domain}.review_vane"
+    hass.states.async_set(entity_id, "on")
+    runtime = standalone(
+        hass, vane_entity=entity_id, vane_heat_value="off", vane_cool_value="on"
+    )
+    await hass.async_block_till_done()
+    assert len(calls) == 1
+    assert runtime.vane_applied["west"] == "heat"
+    await later(hass, freezer, seconds=61)
+    assert "west" not in runtime.vane_applied
+    assert len(calls) == 1
+    await later(hass, freezer, seconds=119)
+    assert len(calls) == 1
+    await later(hass, freezer, seconds=2)
+    assert len(calls) == 2
+    hass.states.async_set(entity_id, "off")
+    runtime.refresh()
+    await hass.async_block_till_done()
+    assert not runtime.command_receipts
+    await later(hass, freezer, minutes=10)
+    assert len(calls) == 2
     runtime.close()

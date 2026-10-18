@@ -301,20 +301,21 @@ class CommandRuntimeMixin:
     def _fail_command(self, receipt, now):
         command, key = receipt.command, _key(receipt.command)
         self.command_receipts.pop(key, None)
-        if command.service in ("set_hvac_mode", "turn_off"):
-            self.command_tracker.cancel(command.entity_id)
-            self.mode_applied.pop(command.equipment_id, None)
-        elif command.service == "set_temperature":
-            self.setpoint_tracker.cancel(command.entity_id)
-        elif command.service == "set_fan_mode":
-            self.fan_applied.pop(command.equipment_id, None)
-        elif command.reason.startswith("vane_"):
+        # Vane switches also use turn_off; clear their own applied state first.
+        if command.reason.startswith("vane_"):
             item = next(
                 (i for i in self.building.equipment if i.id == command.equipment_id),
                 None,
             )
             if item:
                 self.vane_applied.pop(item.zone_id, None)
+        elif command.service in ("set_hvac_mode", "turn_off"):
+            self.command_tracker.cancel(command.entity_id)
+            self.mode_applied.pop(command.equipment_id, None)
+        elif command.service == "set_temperature":
+            self.setpoint_tracker.cancel(command.entity_id)
+        elif command.service == "set_fan_mode":
+            self.fan_applied.pop(command.equipment_id, None)
         previous = self.command_retries.get(key)
         count = (
             previous[2] + 1

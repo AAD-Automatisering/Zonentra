@@ -98,8 +98,6 @@ def snapshot(temperature):
         valid(24.0),
         missing,
         missing,
-        missing,
-        missing,
         (),
         (),
         (),

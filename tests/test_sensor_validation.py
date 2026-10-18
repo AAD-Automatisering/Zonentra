@@ -181,8 +181,6 @@ def test_missing_and_unconfigured_sources_are_distinguished():
     snapshot, demand, decision = evaluate_office(office(), sources_with(None))
     assert_unusable(demand, decision, "missing")
     assert snapshot.temperature.reason == "source_missing"
-    assert snapshot.humidity.quality == "missing"
-    assert snapshot.humidity.reason == "not_configured"
 
 
 # Scenarios 8-10: optional update-based validation for periodic sources.

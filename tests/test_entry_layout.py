@@ -37,7 +37,15 @@ async def edit_zone_subject(hass, flow, subject, values):
         flow["flow_id"], {"next_step_id": subject}
     )
     assert flow["type"] == FlowResultType.FORM
-    return await hass.config_entries.options.async_configure(flow["flow_id"], values)
+    for _ in range(3):
+        visible = {marker.schema for marker in flow["data_schema"].schema}
+        flow = await hass.config_entries.options.async_configure(
+            flow["flow_id"],
+            {key: value for key, value in values.items() if key in visible},
+        )
+        if flow["type"] != FlowResultType.FORM or flow["errors"]:
+            return flow
+    return flow
 
 
 def set_states(hass, zone_id, *units, temperature="21"):

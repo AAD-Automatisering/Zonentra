@@ -228,7 +228,7 @@ async def test_central_options_transaction_override_form_and_clear_source(
     assert flow["type"] == FlowResultType.FORM
     assert "heating_limit" in flow["data_schema"].schema
     assert "hysteresis" in flow["data_schema"].schema
-    data.update(heating_limit=19, cooling_limit=25, hysteresis=0.4, max_age_seconds=600)
+    data.update(heating_limit=19, cooling_limit=25, hysteresis=0.4)
     flow = await hass.config_entries.options.async_configure(flow["flow_id"], data)
     assert flow["type"] == FlowResultType.MENU
     with patch.object(hass.config_entries, "async_reload", return_value=True):

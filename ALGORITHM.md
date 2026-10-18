@@ -14,7 +14,7 @@ hieronder zijn daardoor identiek voor het oude enkele item en de nieuwe opbouw.
 
 HA-states worden op de eventloop gekopieerd naar immutable `SourceState`-waarden.
 De pure kern bouwt daaruit per ruimte een `ZoneSnapshot`: temperatuur, twee
-grenzen, optionele vochtigheid/CO₂/buitentemperatuur, aanwezigheid, contacten en
+grenzen, optionele buitentemperatuur, aanwezigheid, contacten en
 IDs van gekoppelde HVAC-, vloerverwarmings- en zonweringsapparatuur.
 
 Vooraf lost het model per ruimte de twee centrale keuzes op. Grenzen komen uit
@@ -45,7 +45,7 @@ op `sensor_health` en `source_health` niet breken. De reden-code staat in
 Temperaturen met °C en °F worden naar Celsius genormaliseerd. Geen eenheid of een
 onbekende eenheid wordt niet geraden. Temperatuurmetingen moeten tussen −50 en
 65 °C liggen; analysegrenzen tussen 5 en 35 °C. NaN, infinity en niet-numerieke
-waarden zijn ongeldig. Vochtigheid moet 0–100 % zijn en CO₂ 0–10.000 ppm. Deze
+waarden zijn ongeldig. Deze
 bereiken zijn plausibiliteitschecks, geen garantie van sensorcalibratie.
 
 ### Validatiestrategie (0.3.1)
@@ -68,7 +68,7 @@ waarde met een recent rapport blijft geldig en herstelt direct bij het volgende
 rapport. De strategie is per ruimte in te stellen, of centraal voor ruimtes die
 de centrale meetparameters gebruiken. `update_based` vereist een maximale
 updateleeftijd groter dan 0. Bij `state_based` wordt `max_age_seconds` bewaard
-maar genegeerd. De strategie geldt voor temperatuur, vochtigheid en CO₂ van de
+maar genegeerd. De strategie geldt voor de temperatuur van de
 ruimte. De ingestelde temperatuurgrenzen hebben geen leeftijdcontrole.
 Buitentemperatuur gebruikt ongewijzigd de eigen
 `outdoor_max_age_seconds` (0 = geen leeftijdcontrole).
@@ -93,7 +93,7 @@ een nieuwe telegramwaarde.
 Aanwezigheid: on → occupied, off → unoccupied, ontbrekend/ongeldig → unknown.
 Contacten: on → open, off → closed. Voor statische binaire toestanden is er geen
 leeftijdtimeout; unavailable/unknown/restored/assumed blijven wel ongeldig.
-Afwezigheid, open ramen, CO₂, vochtigheid en buitenweer beïnvloeden in 0.3 de
+Afwezigheid, open ramen en buitenweer beïnvloeden in 0.3 de
 klimaatvraag nog niet: dit is verzamelde context voor volgende modules.
 
 Externe grensentiteiten worden niet meer ondersteund. Oude koppelingen worden

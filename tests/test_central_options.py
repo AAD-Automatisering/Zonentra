@@ -69,6 +69,12 @@ async def test_clearing_a_field_in_a_section_removes_it(hass):
 async def test_invalid_section_input_stays_on_the_form(hass):
     central = await setup_central(hass)
     flow = await open_section(hass, central, "general")
+    assert "max_age_seconds" not in flow["data_schema"].schema
+    flow = await hass.config_entries.options.async_configure(
+        flow["flow_id"], {"sensor_validation": "update_based"}
+    )
+    assert flow["type"] == FlowResultType.FORM
+    assert "max_age_seconds" in flow["data_schema"].schema
     flow = await hass.config_entries.options.async_configure(
         flow["flow_id"], {"sensor_validation": "update_based", "max_age_seconds": 0}
     )
@@ -120,3 +126,32 @@ async def test_screen_sun_entity_is_saved_and_followed(hass):
     )
     await hass.async_block_till_done()
     assert runtime.screen_decisions["shade_west_screen"].reason == "no_sun"
+
+
+async def test_state_based_hides_but_preserves_configured_timeout(hass):
+    central = await setup_central(hass)
+    options = dict(central.options)
+    options["building"] = {
+        **options["building"],
+        "sensor_validation": "update_based",
+        "max_age_seconds": 600,
+    }
+    hass.config_entries.async_update_entry(central, options=options)
+    await hass.async_block_till_done()
+    flow = await open_section(hass, central, "general")
+    assert "max_age_seconds" in flow["data_schema"].schema
+    flow = await hass.config_entries.options.async_configure(
+        flow["flow_id"], {"sensor_validation": "state_based", "max_age_seconds": 600}
+    )
+    flow = await hass.config_entries.options.async_configure(
+        flow["flow_id"], {"next_step_id": "general"}
+    )
+    assert "max_age_seconds" not in flow["data_schema"].schema
+    flow = await hass.config_entries.options.async_configure(
+        flow["flow_id"], {"sensor_validation": "state_based"}
+    )
+    flow = await hass.config_entries.options.async_configure(
+        flow["flow_id"], {"next_step_id": "finish"}
+    )
+    await hass.async_block_till_done()
+    assert central.options["building"]["max_age_seconds"] == 600

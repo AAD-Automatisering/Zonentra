@@ -125,6 +125,12 @@ async def test_room_can_switch_to_central_and_restore_dormant_preparation(hass):
     flow = await hass.config_entries.options.async_configure(
         flow["flow_id"], {"next_step_id": "zone_preconditioning"}
     )
+    assert not set(LOCAL) & {marker.schema for marker in flow["data_schema"].schema}
+    flow = await hass.config_entries.options.async_configure(
+        flow["flow_id"],
+        {"calendar_entity": CALENDAR, "use_building_preconditioning": False},
+    )
+    assert flow["type"] == FlowResultType.FORM
     suggested = {
         marker.schema: marker.description.get("suggested_value")
         for marker in flow["data_schema"].schema

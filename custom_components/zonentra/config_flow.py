@@ -210,12 +210,31 @@ CENTRAL_SECTIONS = {
 NEW_CENTRAL_FIELDS = ("outdoor_temperature_entity",)
 
 
-def section_fields(keys) -> dict:
+def applicable_fields(fields: dict, record: dict) -> dict:
+    """Hide inherited values and the timeout of a state-based temperature source."""
+    hidden = set()
+    for flag, keys in (
+        ("use_building_parameters", PARAMETER_FIELDS),
+        ("use_building_preconditioning", PRECONDITIONING_FIELDS),
+        ("use_building_floor_heating", FLOOR_FIELDS),
+    ):
+        if record.get(flag, False):
+            hidden.update(keys)
+    if record.get("sensor_validation", "state_based") != "update_based":
+        hidden.add("max_age_seconds")
     return {
+        marker: value for marker, value in fields.items() if marker.schema not in hidden
+    }
+
+
+def section_fields(keys, record: dict | None = None) -> dict:
+    fields = {
         marker: value
         for marker, value in building_fields(limits=False).items()
         if marker.schema in keys
     }
+
+    return applicable_fields(fields, record) if record is not None else fields
 
 
 def building_defaults() -> dict:
@@ -298,8 +317,6 @@ def zone_fields(groups: list[dict]) -> dict:
         vol.Optional("calendar_entity"): entity_selector("calendar"),
         vol.Optional("use_building_preconditioning"): selector.BooleanSelector(),
         vol.Optional("use_building_floor_heating"): selector.BooleanSelector(),
-        vol.Optional("humidity_entity"): entity_selector("sensor"),
-        vol.Optional("co2_entity"): entity_selector("sensor"),
         vol.Optional("contact_entities"): multi("binary_sensor"),
         vol.Optional("floor_heating_entities"): multi(["climate", "number"]),
         vol.Optional("shading_entities"): multi("cover"),
@@ -310,7 +327,6 @@ def zone_fields(groups: list[dict]) -> dict:
                 "translation_key": "facade",
             }
         ),
-        vol.Optional("ventilation_entities"): multi(["fan", "switch"]),
         # Vane (0.10): up when cooling, down when heating.
         vol.Optional("vane_entity"): entity_selector(list(VANE_DOMAINS)),
         vol.Optional("vane_cool_value"): selector.TextSelector(),
@@ -325,8 +341,6 @@ ZONE_OPTION_SECTIONS = {
     "zone_sensors": (
         "temperature_entity",
         "occupancy_entity",
-        "humidity_entity",
-        "co2_entity",
         "contact_entities",
     ),
     "zone_hvac": (
@@ -348,7 +362,6 @@ ZONE_OPTION_SECTIONS = {
         *FLOOR_FIELDS,
     ),
     "zone_screens": ("shading_entities", "facade"),
-    "zone_ventilation": ("ventilation_entities",),
     "zone_preconditioning": (
         "calendar_entity",
         "use_building_preconditioning",
@@ -357,14 +370,25 @@ ZONE_OPTION_SECTIONS = {
 }
 
 
-def zone_section_fields(section: str, groups: list[dict]) -> dict:
+def zone_section_fields(
+    section: str, groups: list[dict], record: dict | None = None
+) -> dict:
     """Reuse the existing selectors, displaying just one room subject."""
     fields = {
         **zone_fields(groups),
-        **zone_parameter_fields(dict.fromkeys(ZONE_FLAGS, False)),
+        **zone_parameter_fields(
+            {**dict.fromkeys(ZONE_FLAGS, False), "sensor_validation": "update_based"}
+        ),
     }
     keys = ZONE_OPTION_SECTIONS[section]
-    return {marker: value for marker, value in fields.items() if marker.schema in keys}
+    fields = {
+        marker: value for marker, value in fields.items() if marker.schema in keys
+    }
+    return (
+        applicable_fields(fields, {**dict.fromkeys(ZONE_FLAGS, True), **record})
+        if record is not None
+        else fields
+    )
 
 
 def zone_parameter_fields(record: dict) -> dict:
@@ -382,7 +406,9 @@ def zone_parameter_fields(record: dict) -> dict:
         fields.update(preconditioning_fields())
     if not record.get("use_building_floor_heating", True):
         fields.update(floor_fields())
-    return fields
+    return (
+        applicable_fields(fields, record) if "sensor_validation" in record else fields
+    )
 
 
 def clean(user_input: dict) -> dict:
@@ -562,9 +588,11 @@ class ZonentraConfigFlow(ZoneFormMixin, ConfigFlow, domain=DOMAIN):
     async def async_step_zone_parameters(self, user_input=None) -> ConfigFlowResult:
         errors = {}
         if user_input is not None:
+            visible = {marker.schema for marker in zone_parameter_fields(self.zone)}
             self.zone = merge_zone_parameters(self.zone, user_input)
             errors = check_zone(self.hass, self.zone)
-            if not errors:
+            new_keys = {marker.schema for marker in zone_parameter_fields(self.zone)}
+            if not errors and not new_keys - visible:
                 return await self._create_zone()
         return self._parameters_form(user_input or self.zone, errors)
 
@@ -607,14 +635,15 @@ class ZoneOptionsFlow(ZoneFormMixin, OptionsFlow):
                 "zone_regulation",
                 "zone_floor_heating",
                 "zone_screens",
-                "zone_ventilation",
                 "zone_preconditioning",
                 "finish",
             ],
         )
 
     async def _section(self, section, user_input):
-        keys = ZONE_OPTION_SECTIONS[section]
+        fields = zone_section_fields(section, self._groups(), self.zone)
+        keys = getattr(self, "_room_visible_keys", {marker.schema for marker in fields})
+        values = self.zone
         errors = {}
         if user_input is not None:
             candidate = {
@@ -622,7 +651,7 @@ class ZoneOptionsFlow(ZoneFormMixin, OptionsFlow):
                 **clean(user_input),
             }
             for flag in ZONE_FLAGS:
-                if flag in keys:
+                if flag in ZONE_OPTION_SECTIONS[section]:
                     candidate.setdefault(flag, self.zone.get(flag, True))
             for flag, local_keys in (
                 (
@@ -632,24 +661,30 @@ class ZoneOptionsFlow(ZoneFormMixin, OptionsFlow):
                 ("use_building_preconditioning", PRECONDITIONING_FIELDS),
                 ("use_building_floor_heating", FLOOR_FIELDS),
             ):
-                if flag in keys and candidate.get(flag, True):
+                if flag in ZONE_OPTION_SECTIONS[section] and candidate.get(flag, True):
                     for key in local_keys:
                         candidate.pop(key, None)
                         if key in self.zone:
                             candidate[key] = self.zone[key]
+            values = candidate
+            new_fields = zone_section_fields(section, self._groups(), candidate)
+            newly_visible = {marker.schema for marker in new_fields} - set(keys)
             errors = check_zone(self.hass, candidate, self.config_entry.entry_id)
             if not errors:
                 self.zone = candidate
-                return await self.async_step_init()
+                if not newly_visible:
+                    return await self.async_step_init()
         central = central_entry(self.hass)
         building = dict(central.options.get("building", {})) if central else {}
+        fields = zone_section_fields(section, self._groups(), values)
+        self._room_visible_keys = {marker.schema for marker in fields}
         schema = self.add_suggested_values_to_schema(
-            vol.Schema(zone_section_fields(section, self._groups())),
+            vol.Schema(fields),
             {
                 **building_defaults(),
                 **building,
                 **ZONE_DEFAULTS,
-                **self.zone,
+                **values,
                 **(user_input or {}),
             },
         )
@@ -672,9 +707,6 @@ class ZoneOptionsFlow(ZoneFormMixin, OptionsFlow):
 
     async def async_step_zone_screens(self, user_input=None):
         return await self._section("zone_screens", user_input)
-
-    async def async_step_zone_ventilation(self, user_input=None):
-        return await self._section("zone_ventilation", user_input)
 
     async def async_step_zone_preconditioning(self, user_input=None):
         return await self._section("zone_preconditioning", user_input)
@@ -730,6 +762,10 @@ class ZonentraOptionsFlow(OptionsFlowWithReload):
             )
             if candidates and not settings.get("outdoor_temperature_entity"):
                 settings["outdoor_temperature_candidates"] = candidates
+            current = self.topology.get("building", {})
+            if "max_age_seconds" not in getattr(self, "_building_visible_keys", ()):
+                if "max_age_seconds" in current:
+                    settings["max_age_seconds"] = current["max_age_seconds"]
             candidate["building"] = settings
             try:
                 self._validate(candidate)
@@ -737,10 +773,19 @@ class ZonentraOptionsFlow(OptionsFlowWithReload):
                 errors["base"] = str(err)
             else:
                 self.topology = candidate
+                if (
+                    settings.get("sensor_validation", "state_based") == "update_based"
+                    and "max_age_seconds" not in self._building_visible_keys
+                ):
+                    return await self.async_step_building()
                 return await self.async_step_init()
         fields = building_fields(limits=self._limits_in_form)
         defaults = building_defaults()
         current = self.topology.get("building", {})
+        fields = applicable_fields(
+            fields, {**defaults, **current, **(user_input or {})}
+        )
+        self._building_visible_keys = {marker.schema for marker in fields}
         schema = self.add_suggested_values_to_schema(
             vol.Schema(fields), {**defaults, **current, **(user_input or {})}
         )
@@ -829,8 +874,6 @@ class ZonentraOptionsFlow(OptionsFlowWithReload):
                     ): selector.BooleanSelector(),
                     vol.Optional("heating_limit"): numeric(5, 35, unit="°C"),
                     vol.Optional("cooling_limit"): numeric(5, 35, unit="°C"),
-                    vol.Optional("humidity_entity"): entity_selector("sensor"),
-                    vol.Optional("co2_entity"): entity_selector("sensor"),
                     vol.Optional("contact_entities"): selector.EntitySelector(
                         {"filter": {"domain": "binary_sensor"}, "multiple": True}
                     ),
@@ -923,8 +966,6 @@ class ZonentraOptionsFlow(OptionsFlowWithReload):
             for key in (
                 "temperature_entity",
                 "occupancy_entity",
-                "humidity_entity",
-                "co2_entity",
                 "contact_entities",
                 "group_id",
             ):
@@ -948,6 +989,10 @@ class ZonentraOptionsFlow(OptionsFlowWithReload):
                         for marker, value in fields.items()
                         if marker.schema not in keys
                     }
+            fields = applicable_fields(fields, values)
+            self._visible_zone_timeout = "max_age_seconds" in {
+                marker.schema for marker in fields
+            }
             schema = vol.Schema(fields)
         return self.add_suggested_values_to_schema(schema, values)
 
@@ -1003,6 +1048,20 @@ class ZonentraOptionsFlow(OptionsFlowWithReload):
                             record.pop(field, None)
                             if field in previous_record:
                                 record[field] = previous_record[field]
+            if category == "zone" and not user_input.get("delete"):
+                if not self._visible_zone_timeout:
+                    if "max_age_seconds" in previous_record:
+                        record["max_age_seconds"] = previous_record["max_age_seconds"]
+                    if (
+                        not record.get("use_building_parameters", True)
+                        and record.get("sensor_validation", "state_based")
+                        == "update_based"
+                    ):
+                        return self.async_show_form(
+                            step_id="zone_details",
+                            data_schema=self._schema(category, record),
+                            errors={},
+                        )
             if category == "group":
                 previous_record = next(
                     (
@@ -1090,7 +1149,12 @@ class CentralOptionsFlow(ZonentraOptionsFlow):
 
     async def _section(self, section, user_input):
         """One subject of the central settings; the others stay as they are."""
-        keys = CENTRAL_SECTIONS[section]
+        fields = section_fields(
+            CENTRAL_SECTIONS[section], self.topology.get("building", {})
+        )
+        keys = getattr(
+            self, "_central_visible_keys", {marker.schema for marker in fields}
+        )
         current = self.topology.get("building", {})
         errors = {}
         if user_input is not None:
@@ -1108,9 +1172,17 @@ class CentralOptionsFlow(ZonentraOptionsFlow):
                 errors["base"] = str(err)
             else:
                 self.topology = candidate
-                return await self.async_step_init()
+                new_keys = {
+                    marker.schema
+                    for marker in section_fields(CENTRAL_SECTIONS[section], settings)
+                }
+                if not new_keys - set(keys):
+                    return await self.async_step_init()
+        values = {**building_defaults(), **current, **(user_input or {})}
+        fields = section_fields(CENTRAL_SECTIONS[section], values)
+        self._central_visible_keys = {marker.schema for marker in fields}
         schema = self.add_suggested_values_to_schema(
-            vol.Schema(section_fields(keys)),
+            vol.Schema(fields),
             {**building_defaults(), **current, **(user_input or {})},
         )
         return self.async_show_form(

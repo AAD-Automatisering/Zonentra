@@ -4,8 +4,7 @@ Lokale klimaatregeling voor één gebouw met meerdere ruimtes, als Home Assistan
 Custom Integration. Zonentra gebruikt bestaande entiteiten om klimaatvraag te
 berekenen en airco's, ventilatoren, lamellen en zonwering te coördineren.
 Aanwezigheid, raamcontacten, weersverwachtingen en ruimteagenda's kunnen de
-regeling beïnvloeden. Vloerverwarming kan als basisverwarming worden aangestuurd;
-gebouwventilatie wordt alleen geobserveerd.
+regeling beïnvloeden. Vloerverwarming kan als basisverwarming worden aangestuurd.
 
 ## Installatie
 
@@ -88,10 +87,21 @@ Via **Configureren** bij de centrale configuratie stel je aanwezigheid,
 ruimteregeling, zonwering, weersverwachting, afspraakvoorbereiding en groepen in.
 Via **Configureren** bij een ruimte kies je een afzonderlijk onderwerp: Algemeen,
 Sensoren en aanwezigheid, Airco’s en lamellen, Regelparameters, Vloerverwarming,
-Zonwering, Ventilatie of Agenda en afspraakvoorbereiding. **Toepassen en terug**
+Zonwering of Agenda en afspraakvoorbereiding. **Toepassen en terug**
 bewaart een onderwerp in het concept en opent weer het menu; **Opslaan** bewaart
 alle wijzigingen in één keer. Sluiten verwerpt het concept.
 Ruimtes nemen standaard centrale instellingen over en kunnen daarvan afwijken.
+Lokale regelparameters, vloerverwarmingsgrenzen en voorbereidingswaarden worden
+alleen getoond als de betreffende centrale instelling uitstaat. Eerdere lokale
+waarden blijven bewaard. Na het uitschakelen van overnemen toont **Toepassen en
+terug** eerst de lokale velden; pas die toe om terug te keren naar het menu.
+De maximale meetleeftijd verschijnt alleen bij `update_based`; bij `state_based`
+blijft een eerder ingestelde leeftijd bewaard zonder te worden toegepast.
+Na het kiezen van `update_based` verschijnt eerst het veld voor de meetleeftijd.
+Het interval voor setpoint- of ventilatorstandwijzigingen geldt per airco voor
+beide regelingen. Handmatige bediening van een gekoppelde airco kan de automatische
+aansturing tijdelijk pauzeren; dit staat los van tijdelijke temperatuurdoelen op
+de Zonentra-thermostaat.
 **Gebruik centrale instellingen voor afspraakvoorbereiding** staat standaard aan,
 ook als er al lokale voorbereidingswaarden zijn opgeslagen. Alleen een expliciete
 keuze voor uit schakelt over naar die lokale waarden.

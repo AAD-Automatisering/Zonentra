@@ -19,13 +19,11 @@ EQUIPMENT_FIELDS = (
     ("indoor_units", "hvac"),
     ("floor_heating_entities", "floor_heating"),
     ("shading_entities", "shading"),
-    ("ventilation_entities", "ventilation"),
 )
 PREFIX = {
     "hvac": "hvac",
     "floor_heating": "floor",
     "shading": "shade",
-    "ventilation": "vent",
 }
 
 

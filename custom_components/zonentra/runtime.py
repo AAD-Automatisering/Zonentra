@@ -451,12 +451,9 @@ class BuildingRuntime(
         for zone in self.building.zones:
             # Only update_based room measurements can expire.
             if max_age := max_age_for(zone.sensor_validation, zone.max_age_seconds):
-                for field in ("temperature_entity", "humidity_entity", "co2_entity"):
-                    source = sources.get(getattr(zone, field))
-                    if source and source.reported_at:
-                        deadlines.append(
-                            source.reported_at + timedelta(seconds=max_age)
-                        )
+                source = sources.get(zone.temperature_entity)
+                if source and source.reported_at:
+                    deadlines.append(source.reported_at + timedelta(seconds=max_age))
         outside = sources.get(self.building.settings.outdoor_temperature_entity)
         if (
             outside

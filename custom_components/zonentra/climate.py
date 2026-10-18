@@ -118,10 +118,6 @@ class ZonentraThermostat(ZoneEntity, ClimateEntity):
         return self.runtime.zone_snapshots[self._zone_id].temperature.value
 
     @property
-    def current_humidity(self) -> float | None:
-        return self.runtime.zone_snapshots[self._zone_id].humidity.value
-
-    @property
     def target_temperature(self) -> float | None:
         """Single target in heat or cool mode: the limit that applies."""
         mode = self.thermostat.hvac_mode
