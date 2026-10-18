@@ -39,7 +39,11 @@
           "facade": "Facade of the screens (optional)",
           "calendar_entity": "Room calendar (optional; adaptive heating/cooling before meetings)",
           "use_building_preconditioning": "Use central meeting preparation settings",
-          "use_building_floor_heating": "Use central floor heating settings"
+          "use_building_floor_heating": "Use central floor heating settings",
+          "native_regulation": "Trial: let the air conditioner regulate during comfort"
+        },
+        "data_description": {
+          "native_regulation": "Only this room. A running air conditioner stays enabled at the target, with slower temperature corrections. Eco/away, open windows, manual operation and group protection still apply. Fan control is unchanged. Off = existing control."
         }
       },
       "zone_parameters": {
@@ -214,9 +218,13 @@
           "preconditioning_cooling_rate": "Initial cooling rate (°C/min; default 0.05, adjusted for outdoor temperature)",
           "use_building_preconditioning": "Use central meeting preparation settings",
           "use_building_floor_heating": "Use central floor heating settings",
-          "floor_heating_limit": "Floor heating: fixed minimum room temperature (°C; default 16)"
+          "floor_heating_limit": "Floor heating: fixed minimum room temperature (°C; default 16)",
+          "native_regulation": "Trial: let the air conditioner regulate during comfort"
         },
-        "submit": "Apply and return"
+        "submit": "Apply and return",
+        "data_description": {
+          "native_regulation": "Only this room. A running air conditioner stays enabled at the target, with slower temperature corrections. Eco/away, open windows, manual operation and group protection still apply. Fan control is unchanged. Off = existing control."
+        }
       },
       "group": {
         "title": "Outdoor unit group",
@@ -342,9 +350,13 @@
           "facade": "Facade of the screens (optional)",
           "calendar_entity": "Room calendar (optional; adaptive heating/cooling before meetings)",
           "use_building_preconditioning": "Use central meeting preparation settings",
-          "use_building_floor_heating": "Use central floor heating settings"
+          "use_building_floor_heating": "Use central floor heating settings",
+          "native_regulation": "Trial: let the air conditioner regulate during comfort"
         },
-        "submit": "Save"
+        "submit": "Save",
+        "data_description": {
+          "native_regulation": "Only this room. A running air conditioner stays enabled at the target, with slower temperature corrections. Eco/away, open windows, manual operation and group protection still apply. Fan control is unchanged. Off = existing control."
+        }
       },
       "zone_parameters": {
         "title": "Local zone values",
@@ -427,9 +439,13 @@
           "use_building_parameters": "Use central regulation parameters",
           "hysteresis": "Temperature hysteresis (°C)",
           "sensor_validation": "Sensor validation (state_based = default; update_based only for periodically reporting sensors)",
-          "max_age_seconds": "Maximum update age for update_based (seconds; ignored by state_based)"
+          "max_age_seconds": "Maximum update age for update_based (seconds; ignored by state_based)",
+          "native_regulation": "Trial: let the air conditioner regulate during comfort"
         },
-        "submit": "Apply and return"
+        "submit": "Apply and return",
+        "data_description": {
+          "native_regulation": "Only this room. A running air conditioner stays enabled at the target, with slower temperature corrections. Eco/away, open windows, manual operation and group protection still apply. Fan control is unchanged. Off = existing control."
+        }
       },
       "zone_floor_heating": {
         "title": "Floor heating",

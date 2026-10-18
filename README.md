@@ -136,6 +136,40 @@ snelheidsnamen en numerieke standen worden van laag naar hoog geordend; onbekend
 fabrikantstanden behouden hun volgorde. De thermostaat gebruikt gemelde activiteit
 zoals `idle` waar beschikbaar; `activity_source` maakt terugval op de gekozen modus zichtbaar.
 
+### Proef met de eigen aircoregeling in één ruimte
+
+Na installatie van deze versie kies je bij de **Zonentra-ruimte**:
+**Configureren → Regelparameters → Proef: airco tijdens comfort zelf laten regelen**.
+Kies **Toepassen en terug**, daarna **Opslaan**. Laat de proef bij andere ruimtes
+uitstaan en laat **Ruimteregeling** van de proefruimte aanstaan. De proef staat
+standaard uit, ook voor bestaande ruimtes, en vereist geen wijziging aan de KNX-configuratie.
+
+Een al draaiende airco blijft tijdens comfort ingeschakeld wanneer de ruimte geen
+warmte- of koelvraag meer heeft. De unit kan dan zelf terugregelen of `idle` melden;
+een uitgeschakelde unit wordt alleen op basis van echte vraag gestart.
+De externe ruimtesensor blijft de vraag bepalen. De setpointcorrectie gebruikt
+25% van de ruimteafwijking, begrensd op 1 °C vóór afronding naar de apparaatstap
+(of de kleinere centraal ingestelde maximale correctie). Het bestaande minimale
+interval tussen wijzigingen en de ventilatorregeling blijven gelden.
+
+Bij verwarmen vervalt het aanhouden boven de verwarmingsgrens plus 1 °C; bij
+koelen onder de koelgrens min 1 °C. Bij een hysterese groter dan 0,5 °C wordt die
+marge twee keer de hysterese. Daarna volgt de bestaande regeling, inclusief
+minimale draaitijden. Eco/afwezig, thermostaat-uit, raamdetectie, handmatige
+bediening, onbekende metingen, vloerverwarmingsblokkades en groepswissels behouden
+hun bestaande voorrang. De proef is geen instelling van de Mitsubishi-gateway.
+
+Test eerst enkele vergelijkbare werkdagen met dezelfde comfortgrenzen. Controleer
+bij de sensor **Klimaatvraag** de attributen `airco_control_strategy: native_trial`
+en `native_regulation_active: true` (bij ingeschakelde ruimteregeling en comfort).
+Controleer daarnaast het temperatuurverloop, de airco-status en de unitdiagnostiek:
+bij bereikte temperatuur hoort het plan `hold` met reden `native_regulation` te
+zijn. Een unit die `heat` of `cool` blijft melden kan intern `idle` zijn.
+Beoordeel of de temperatuur comfortabel stabiel blijft en of Zonentra minder
+aan/uit-commando's stuurt. Voor energieverbruik telt de hele gedeelde buitenunit;
+een proefruimte alleen is daardoor geen zuivere meting van energiebesparing.
+Terugdraaien kan door dezelfde proefoptie uit te zetten en op te slaan.
+
 Onder **Aanwezigheid** kun je daarnaast een afzonderlijke **Werkdag-sensor voor
 vandaag** kiezen (offset 0). Het schema bepaalt de tijden; de sensor bepaalt of
 vandaag een werkdag is. Bij `off`, ontbrekende of onbetrouwbare sensorinformatie

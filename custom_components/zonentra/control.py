@@ -277,6 +277,8 @@ def unit_intent(
     settings: BuildingSettings,
     now: datetime,
     override_event: str | None = None,
+    *,
+    native_hold: bool = False,
 ) -> UnitIntent:
     """Unit level: desired end state and the next planned step."""
     mode = unit.selected_mode
@@ -399,6 +401,17 @@ def unit_intent(
     if zone_demand is None or demand == "unknown":
         health = zone_demand.sensor_health if zone_demand else "no_zone_demand"
         return result("unchanged", "blocked", "zone_demand_unknown", health)
+    if (
+        native_hold
+        and demand == "neutral"
+        and zone_demand.reason == "within_comfort_band"
+        and mode in OPPOSITE
+        and target in (None, mode)
+        and not coordination.switch_needed
+        and not coordination.conflicts
+        and coordination.phase in ("idle", "completed")
+    ):
+        return result(mode, "hold", "native_regulation")
     wanted = DEMAND_MODE.get(demand)
     if target and wanted == target:
         if mode == target:
@@ -463,6 +476,8 @@ def plan(
     override_events: Mapping[str, str],
     memories: Mapping[str, CoordinationMemory],
     now: datetime,
+    *,
+    native_holds: frozenset[str] = frozenset(),
 ) -> tuple[
     dict[str, GroupCoordination], dict[str, UnitIntent], dict[str, CoordinationMemory]
 ]:
@@ -527,6 +542,7 @@ def plan(
             settings,
             now,
             override_events.get(item.id),
+            native_hold=item.id in native_holds,
         )
     for group_id, coordination in coordinations.items():
         coordinations[group_id] = replace(

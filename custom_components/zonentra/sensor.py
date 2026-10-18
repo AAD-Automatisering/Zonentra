@@ -261,6 +261,11 @@ class ZoneDemandSensor(ZonentraDiagnosticSensor):
             "active_band": band,
             "active_band_reason": reason,
             "room_regulation": runtime.regulated(self._zone.id),
+            "airco_control_strategy": "native_trial"
+            if self.zone.native_regulation
+            else "zonentra",
+            "native_regulation_active": runtime.regulated(self.zone.id)
+            and runtime.native_regulation(self.zone),
         }
 
     @property

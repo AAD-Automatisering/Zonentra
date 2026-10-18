@@ -924,3 +924,23 @@ Een ontbrekende windmelding bewijst daarom geen veilige windbelasting bij de gev
 Voor numerieke grenzen blijven de specificaties van de screenfabrikant leidend.
 Bronnen: [Pirate Weather 1.9.2](https://github.com/Pirate-Weather/pirate-weather-ha/blob/v1.9.2/custom_components/pirateweather/weather.py),
 [Home Assistant weather-attributen](https://www.home-assistant.io/integrations/weather/#state-attributes).
+
+
+## Optionele proef: eigen aircoregeling tijdens comfort
+
+`Zone.native_regulation` is standaard false en wordt uitsluitend per ruimte
+opgeslagen. In comfort mogen al draaiende heat/cool-units bij neutrale vraag met
+reden `within_comfort_band` blijven draaien (`hold`, `native_regulation`). Dit
+wijzigt de berekende ruimtevraag, groepsscores en groepsmodus niet. De externe
+ruimtesensor begrenst het aanhouden: bij heat maximaal de verwarmingsgrens plus
+`max(1, 2 × hysterese)`; bij cool minimaal de koelgrens min die marge.
+De unit moet bij de gekozen thermostaatmodus passen. Er wordt geen nieuwe unit
+gestart zonder vraag en het aanhouden overrulet geen groepsconflict, lopende
+omschakeling, handmatige overname of door beleid onderdrukte vraag.
+
+Tijdens deze proef in comfort gebruikt de setpointregelaar gain 0,25 en
+`min(centrale max_offset, 1 °C)` vóór afronding. Het wijzigingsinterval blijft
+centraal bepaald. Buiten comfort geldt de bestaande setpointregeling. De proef
+wijzigt geen ventilatorcommando's, start-/stoptijden of laatste serviceguards.
+De ruimtevraagsensor toont de geselecteerde strategie en of de proef momenteel
+voor een ingeschakelde regeling in comfort geldt.

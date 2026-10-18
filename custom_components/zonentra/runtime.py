@@ -75,11 +75,14 @@ from .shading import ScreenDecision, ScreenMove, SunMemory
 from .temperature import convert_temperature
 from .thermostat import (
     CLEAR_MANUAL,
+    NATIVE_GAIN,
+    NATIVE_MAX_OFFSET,
     UNIT_MODES,
     RoomUnitControl,
     SetpointPlan,
     Thermostat,
     active_band,
+    native_hold_allowed,
     plan_fan,
     plan_room_mode,
     plan_room_unit,
@@ -1301,6 +1304,43 @@ class BuildingRuntime(
         component = self.hass.data.get(DATA_INSTANCES, {}).get("climate")
         return component.get_entity(entity_id) if component else None
 
+    def native_regulation(self, zone):
+        """The trial only applies to comfort, including scheduled preparation."""
+        return (
+            zone.native_regulation
+            and self.zone_bands.get(zone.id, (None,))[0] == "comfort"
+            and self.thermostat(zone.id).hvac_mode in ("heat", "cool", "heat_cool")
+            and self.windows.get(zone.id) != "open"
+        )
+
+    def _native_holds(self):
+        zones = {
+            zone.id: zone
+            for zone in self.building.zones
+            if self.native_regulation(zone)
+        }
+        holds = set()
+        for item in self.building.equipment:
+            if item.kind != "hvac" or item.zone_id not in zones:
+                continue
+            snapshot = self.zone_snapshots[item.zone_id]
+            unit = self.indoor_units.get(item.id)
+            if (
+                unit
+                and self.thermostat(item.zone_id).hvac_mode
+                in ("heat_cool", unit.selected_mode)
+                and snapshot.temperature.quality == "valid"
+                and native_hold_allowed(
+                    unit.selected_mode,
+                    snapshot.temperature.value,
+                    snapshot.heating_limit.value,
+                    snapshot.cooling_limit.value,
+                    zones[item.zone_id].hysteresis,
+                )
+            ):
+                holds.add(item.id)
+        return frozenset(holds)
+
     def _setpoint_plan(self, item, zone, settings, now) -> SetpointPlan:
         unit = self.indoor_units.get(item.id)
         override = self.overrides.get(item.id)
@@ -1330,8 +1370,11 @@ class BuildingRuntime(
             convert_temperature(unit.target_temperature, source_unit),
             self.setpoint_sent.get(item.id),
             now,
-            max_offset=settings.setpoint_max_offset,
+            max_offset=min(settings.setpoint_max_offset, NATIVE_MAX_OFFSET)
+            if self.native_regulation(zone)
+            else settings.setpoint_max_offset,
             interval_seconds=settings.setpoint_interval_seconds,
+            gain=NATIVE_GAIN if self.native_regulation(zone) else 1.0,
             step=step,
             step_origin=(convert_temperature(0, step_unit) or 0)
             if step is not None and step > 0
@@ -1836,6 +1879,7 @@ class BuildingRuntime(
             events,
             self.coordination_memories,
             now,
+            native_holds=self._native_holds(),
         )
 
     def _climate(self, state) -> ClimateAttributes:

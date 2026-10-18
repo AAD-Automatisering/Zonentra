@@ -171,7 +171,10 @@ async def test_local_parameters_are_shown_only_after_disabling_inheritance(hass)
     flow = await hass.config_entries.options.async_configure(
         flow["flow_id"], {"next_step_id": "zone_regulation"}
     )
-    assert set(flow["data_schema"].schema) == {"use_building_parameters"}
+    assert set(flow["data_schema"].schema) == {
+        "use_building_parameters",
+        "native_regulation",
+    }
     flow = await hass.config_entries.options.async_configure(
         flow["flow_id"], {"use_building_parameters": False}
     )

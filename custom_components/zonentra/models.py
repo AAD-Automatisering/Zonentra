@@ -60,6 +60,7 @@ class Zone:
     use_building_parameters: bool = False
     use_building_preconditioning: bool = True
     use_building_floor_heating: bool = True
+    native_regulation: bool = False  # Opt-in trial: let a running airco regulate.
     # 0.10: own eco/away bands when the zone does not use the central limits;
     # None takes the central value.
     eco_heating_limit: float | None = None
@@ -350,6 +351,7 @@ def build_model(building_id: str, name: str, topology: dict[str, Any]) -> Buildi
                 "use_building_parameters",
                 "use_building_preconditioning",
                 "use_building_floor_heating",
+                "native_regulation",
             )
         ):
             raise ValueError("invalid_parameters")

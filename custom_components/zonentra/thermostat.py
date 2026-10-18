@@ -49,6 +49,21 @@ BAND_KEYS = (
 BANDS = ("comfort", "eco", "away")
 DEFAULT_MIN_SETPOINT = 16.0
 DEFAULT_MAX_SETPOINT = 30.0
+# Conservative trial settings, independent of the manufacturer's fan control.
+NATIVE_GAIN = 0.25
+NATIVE_MAX_OFFSET = 1.0
+
+
+def native_hold_allowed(mode, temperature, heating_limit, cooling_limit, hysteresis):
+    """Keep running only inside the external room sensor's bounded tolerance."""
+    if temperature is None or heating_limit is None or cooling_limit is None:
+        return False
+    tolerance = max(1.0, 2 * hysteresis)
+    if mode == "heat":
+        return temperature <= heating_limit + tolerance
+    if mode == "cool":
+        return temperature >= cooling_limit - tolerance
+    return False
 
 
 @dataclass(frozen=True)
@@ -440,12 +455,14 @@ def plan_setpoint(
     step_origin: float = 0,
     min_temp: float | None = None,
     max_temp: float | None = None,
+    gain: float = 1.0,
 ) -> SetpointPlan:
     """Self-regulating setpoint for a running unit, steered on the room sensor.
 
     The base is the edge of the comfort band the room is heading for
     (heating limit + hysteresis, or cooling limit - hysteresis). The unit's
-    own sensor sits in the unit, so the room error is added on top (gain 1),
+    own sensor sits in the unit, so the room error is added on top (default gain 1;
+    the optional native trial uses gain 0.25),
     bounded by ``max_offset``: a cold room asks the unit for more, a room that
     is already warm enough for less. Changes are rounded to the unit's step
     and sent at most once per ``interval_seconds``.
@@ -464,11 +481,11 @@ def plan_setpoint(
     step = step if step and step > 0 else 0.5
     if mode == "heat":
         base = heating_limit + hysteresis
-        offset = max(-max_offset, min(max_offset, base - room_temperature))
+        offset = max(-max_offset, min(max_offset, gain * (base - room_temperature)))
         raw = base + offset
     else:
         base = cooling_limit - hysteresis
-        offset = max(-max_offset, min(max_offset, room_temperature - base))
+        offset = max(-max_offset, min(max_offset, gain * (room_temperature - base)))
         raw = base - offset
     low = min_temp if min_temp is not None else DEFAULT_MIN_SETPOINT
     high = max_temp if max_temp is not None else DEFAULT_MAX_SETPOINT

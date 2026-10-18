@@ -39,7 +39,11 @@
           "facade": "Gevel van de zonwering (optioneel)",
           "calendar_entity": "Ruimteagenda (optioneel; adaptief verwarmen/koelen vóór afspraken)",
           "use_building_preconditioning": "Gebruik centrale instellingen voor afspraakvoorbereiding",
-          "use_building_floor_heating": "Centrale instellingen voor vloerverwarming gebruiken"
+          "use_building_floor_heating": "Centrale instellingen voor vloerverwarming gebruiken",
+          "native_regulation": "Proef: airco tijdens comfort zelf laten regelen"
+        },
+        "data_description": {
+          "native_regulation": "Alleen voor deze ruimte. Een draaiende airco blijft bij bereikte temperatuur ingeschakeld, met rustige temperatuurcorrecties. Eco/afwezig, open ramen, handmatige bediening en groepsbeveiliging blijven gelden. De ventilatorregeling verandert niet. Uit = bestaande regeling."
         }
       },
       "zone_parameters": {
@@ -214,9 +218,13 @@
           "preconditioning_cooling_rate": "Starttempo koelen (°C/min; standaard 0,05, aangepast aan buitentemperatuur)",
           "use_building_preconditioning": "Gebruik centrale instellingen voor afspraakvoorbereiding",
           "use_building_floor_heating": "Centrale instellingen voor vloerverwarming gebruiken",
-          "floor_heating_limit": "Vloerverwarming: vaste ondergrens kamertemperatuur (°C; standaard 16)"
+          "floor_heating_limit": "Vloerverwarming: vaste ondergrens kamertemperatuur (°C; standaard 16)",
+          "native_regulation": "Proef: airco tijdens comfort zelf laten regelen"
         },
-        "submit": "Toepassen en terug"
+        "submit": "Toepassen en terug",
+        "data_description": {
+          "native_regulation": "Alleen voor deze ruimte. Een draaiende airco blijft bij bereikte temperatuur ingeschakeld, met rustige temperatuurcorrecties. Eco/afwezig, open ramen, handmatige bediening en groepsbeveiliging blijven gelden. De ventilatorregeling verandert niet. Uit = bestaande regeling."
+        }
       },
       "group": {
         "title": "Buitenunitgroep",
@@ -342,9 +350,13 @@
           "facade": "Gevel van de zonwering (optioneel)",
           "calendar_entity": "Ruimteagenda (optioneel; adaptief verwarmen/koelen vóór afspraken)",
           "use_building_preconditioning": "Gebruik centrale instellingen voor afspraakvoorbereiding",
-          "use_building_floor_heating": "Centrale instellingen voor vloerverwarming gebruiken"
+          "use_building_floor_heating": "Centrale instellingen voor vloerverwarming gebruiken",
+          "native_regulation": "Proef: airco tijdens comfort zelf laten regelen"
         },
-        "submit": "Opslaan"
+        "submit": "Opslaan",
+        "data_description": {
+          "native_regulation": "Alleen voor deze ruimte. Een draaiende airco blijft bij bereikte temperatuur ingeschakeld, met rustige temperatuurcorrecties. Eco/afwezig, open ramen, handmatige bediening en groepsbeveiliging blijven gelden. De ventilatorregeling verandert niet. Uit = bestaande regeling."
+        }
       },
       "zone_parameters": {
         "title": "Eigen waarden ruimte",
@@ -427,9 +439,13 @@
           "use_building_parameters": "Centrale regelparameters gebruiken",
           "hysteresis": "Temperatuurhysterese (°C)",
           "sensor_validation": "Sensorvalidatie (state_based = standaard; update_based alleen voor periodiek rapporterende sensoren)",
-          "max_age_seconds": "Maximale updateleeftijd bij update_based (seconden; genegeerd bij state_based)"
+          "max_age_seconds": "Maximale updateleeftijd bij update_based (seconden; genegeerd bij state_based)",
+          "native_regulation": "Proef: airco tijdens comfort zelf laten regelen"
         },
-        "submit": "Toepassen en terug"
+        "submit": "Toepassen en terug",
+        "data_description": {
+          "native_regulation": "Alleen voor deze ruimte. Een draaiende airco blijft bij bereikte temperatuur ingeschakeld, met rustige temperatuurcorrecties. Eco/afwezig, open ramen, handmatige bediening en groepsbeveiliging blijven gelden. De ventilatorregeling verandert niet. Uit = bestaande regeling."
+        }
       },
       "zone_floor_heating": {
         "title": "Vloerverwarming",

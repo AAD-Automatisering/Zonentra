@@ -286,6 +286,7 @@ def multi(domain):
 
 
 ZONE_DEFAULTS = {
+    "native_regulation": False,
     "weight": 1.0,
     "use_building_limits": True,
     "use_building_parameters": True,
@@ -315,6 +316,7 @@ def zone_fields(groups: list[dict]) -> dict:
         vol.Optional("weight"): numeric(0.1, 10),
         vol.Optional("use_building_limits"): selector.BooleanSelector(),
         vol.Optional("use_building_parameters"): selector.BooleanSelector(),
+        vol.Optional("native_regulation"): selector.BooleanSelector(),
         vol.Optional("occupancy_entity"): entity_selector("binary_sensor"),
         vol.Optional("calendar_entity"): entity_selector("calendar"),
         vol.Optional("use_building_preconditioning"): selector.BooleanSelector(),
@@ -353,6 +355,7 @@ ZONE_OPTION_SECTIONS = {
         "vane_heat_value",
     ),
     "zone_regulation": (
+        "native_regulation",
         "use_building_parameters",
         "hysteresis",
         "sensor_validation",
@@ -432,7 +435,12 @@ def merge_zone(previous: dict, submitted: dict) -> dict:
         )
         if key in previous
     }
-    record = {"id": previous["id"], **dormant, **clean(submitted)}
+    record = {
+        "id": previous["id"],
+        "native_regulation": previous.get("native_regulation", False),
+        **dormant,
+        **clean(submitted),
+    }
     for flag in ZONE_FLAGS:
         record.setdefault(flag, previous.get(flag, True))
     return record
@@ -864,6 +872,7 @@ class ZonentraOptionsFlow(OptionsFlowWithReload):
                     vol.Optional("temperature_entity"): entity_selector("sensor"),
                     vol.Optional("use_building_limits"): selector.BooleanSelector(),
                     vol.Optional("use_building_parameters"): selector.BooleanSelector(),
+                    vol.Optional("native_regulation"): selector.BooleanSelector(),
                     vol.Optional("occupancy_entity"): entity_selector("binary_sensor"),
                     vol.Optional("calendar_entity"): entity_selector("calendar"),
                     vol.Optional(
@@ -929,6 +938,7 @@ class ZonentraOptionsFlow(OptionsFlowWithReload):
                 "cooling_limit": 24.0,
                 **{key: getattr(zone, key) for key in PRECONDITIONING_FIELDS},
                 **{key: getattr(zone, key) for key in FLOOR_FIELDS},
+                "native_regulation": zone.native_regulation,
                 "weight": zone.weight,
                 "hysteresis": zone.hysteresis,
                 "max_age_seconds": zone.max_age_seconds,
