@@ -29,16 +29,33 @@ def test_preparation_inheritance_preserves_existing_local_values():
                 **LOCAL,
                 "use_building_preconditioning": True,
             },
+            {
+                "id": "local",
+                "name": "Local",
+                **LOCAL,
+                "use_building_preconditioning": False,
+            },
         ],
     }
     migrated = migrate_options(topology)
     assert migrated == migrate_options(migrated)
     assert "use_building_preconditioning" not in topology["zones"][0]
     rooms = build_model("test", "Test", migrated).zones
-    assert [room.use_building_preconditioning for room in rooms] == [True, False, True]
+    assert [room.use_building_preconditioning for room in rooms] == [
+        True,
+        True,
+        True,
+        False,
+    ]
+    assert migrated["zones"][1]["preconditioning_max_minutes"] == 120
     assert [
         tuple(getattr(room, key) for key in PRECONDITIONING_FIELDS) for room in rooms
-    ] == [tuple(CENTRAL.values()), tuple(LOCAL.values()), tuple(CENTRAL.values())]
+    ] == [
+        tuple(CENTRAL.values()),
+        tuple(CENTRAL.values()),
+        tuple(CENTRAL.values()),
+        tuple(LOCAL.values()),
+    ]
 
 
 @pytest.mark.parametrize(
@@ -56,7 +73,7 @@ def test_central_preparation_values_are_validated(key, value):
 
 
 async def test_central_preparation_updates_inheriting_rooms_only(hass):
-    central, old, _ = await office(hass, **LOCAL)
+    central, old, _ = await office(hass, use_building_preconditioning=False, **LOCAL)
     assert old.options["use_building_preconditioning"] is False
     set_states(hass, "east")
     inherited = await add_zone(hass, zone_options("east"))
@@ -79,7 +96,7 @@ async def test_central_preparation_updates_inheriting_rooms_only(hass):
 
 
 async def test_room_can_switch_to_central_and_restore_dormant_preparation(hass):
-    central, zone, _ = await office(hass, **LOCAL)
+    central, zone, _ = await office(hass, use_building_preconditioning=False, **LOCAL)
     hass.config_entries.async_update_entry(
         central,
         options={
@@ -144,7 +161,18 @@ async def test_room_can_switch_to_central_and_restore_dormant_preparation(hass):
 def test_booking_configuration_rejects_invalid_values(settings):
     with pytest.raises(ValueError):
         build_model(
-            "test", "Test", {"zones": [{"id": "west", "name": "West", **settings}]}
+            "test",
+            "Test",
+            {
+                "zones": [
+                    {
+                        "id": "west",
+                        "name": "West",
+                        "use_building_preconditioning": False,
+                        **settings,
+                    }
+                ]
+            },
         )
 
 
@@ -179,3 +207,31 @@ async def test_calendar_can_be_changed_and_removed_using_room_options(hass):
     assert central.runtime_data.building.zones[0].calendar_entity is None
     assert central.runtime_data.booking_plans["west"].status == "not_configured"
     assert other not in central.runtime_data.building.entity_ids
+
+
+async def test_central_preparation_is_default_in_new_and_existing_room_forms(hass):
+    central, zone, _ = await office(hass, **LOCAL)
+    assert zone.options["use_building_preconditioning"] is True
+    assert central.runtime_data.building.zones[0].preconditioning_max_minutes == 180
+    flow = await hass.config_entries.options.async_init(zone.entry_id)
+    flow = await hass.config_entries.options.async_configure(
+        flow["flow_id"], {"next_step_id": "zone_preconditioning"}
+    )
+    marker = next(
+        key
+        for key in flow["data_schema"].schema
+        if key.schema == "use_building_preconditioning"
+    )
+    assert marker.description["suggested_value"] is True
+    flow = await hass.config_entries.flow.async_init(
+        "zonentra", context={"source": "user"}
+    )
+    flow = await hass.config_entries.flow.async_configure(
+        flow["flow_id"], {"next_step_id": "zone"}
+    )
+    marker = next(
+        key
+        for key in flow["data_schema"].schema
+        if key.schema == "use_building_preconditioning"
+    )
+    assert marker.description["suggested_value"] is True

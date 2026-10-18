@@ -43,6 +43,10 @@ via centrale **Ruimteregeling**, met een afwijking per ruimte. Bij koeling wacht
 de airco op bevestigd uitgeschakelde vloerthermostaten. De vloer blijft uit
 zolang een airco in dezelfde ruimte op cool/dry staat. Uitschakelen van de
 vloerregeling laat de laatste instelling van de vloerthermostaat staan.
+Een KNX-vloerthermostaat met alleen `hvac_modes: heat` wordt ook ondersteund voor
+het instellen van de doeltemperatuur. Zonder `off` kan Zonentra de vloer niet
+uitschakelen: dan verschijnt **Uitschakelen niet ondersteund** en blijft aircokoeling
+geblokkeerd zolang de vloer niet betrouwbaar uit meldt.
 De sensor **Opwarming met airco** signaleert langdurig onvoldoende opwarming;
 hij schakelt geen extra gasverwarming in.
 **Regenbeveiliging** staat standaard aan zodra een weerbron is gekoppeld. De
@@ -85,6 +89,9 @@ Zonwering, Ventilatie of Agenda en afspraakvoorbereiding. **Toepassen en terug**
 bewaart een onderwerp in het concept en opent weer het menu; **Opslaan** bewaart
 alle wijzigingen in één keer. Sluiten verwerpt het concept.
 Ruimtes nemen standaard centrale instellingen over en kunnen daarvan afwijken.
+**Gebruik centrale instellingen voor afspraakvoorbereiding** staat standaard aan,
+ook als er al lokale voorbereidingswaarden zijn opgeslagen. Alleen een expliciete
+keuze voor uit schakelt over naar die lokale waarden.
 Comfortgrenzen stel je in op het centrale apparaat of het ruimteapparaat.
 Een geldige, uitsluitend verwarmende of koelende vraag wordt door de groep gevolgd,
 ook bij een kleine of nul-score tijdens het afmaken van de kamerhysterese.

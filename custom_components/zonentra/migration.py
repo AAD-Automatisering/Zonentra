@@ -83,14 +83,11 @@ def migrate_options(options: dict) -> dict:
 
 
 def _room_policy(zone: dict) -> None:
-    """Existing local preparation/floor values remain local; other rooms inherit."""
+    """Preparation inherits by default; preserve explicit room choices."""
     zone.setdefault(
         "use_building_floor_heating", not any(key in zone for key in FLOOR_FIELDS)
     )
-    zone.setdefault(
-        "use_building_preconditioning",
-        not any(key in zone for key in PRECONDITIONING_FIELDS),
-    )
+    zone.setdefault("use_building_preconditioning", True)
 
 
 def _remove_limit_entities(record: dict) -> bool:

@@ -252,7 +252,12 @@ async def test_reaching_target_does_not_end_preparation_early(hass):
 
 
 async def test_zero_maximum_disables_preparation(hass):
-    central, _, _ = await office(hass, start=20, preconditioning_max_minutes=0)
+    central, _, _ = await office(
+        hass,
+        start=20,
+        use_building_preconditioning=False,
+        preconditioning_max_minutes=0,
+    )
     assert not central.runtime_data.office_plans["west"].active
     assert central.runtime_data.zone_bands["west"][0] == "away"
 

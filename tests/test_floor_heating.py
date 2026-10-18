@@ -14,6 +14,7 @@ from custom_components.zonentra.floor_heating import heating_progress
 from custom_components.zonentra.models import build_model
 from custom_components.zonentra.thermostat import Thermostat
 from tests.test_entry_layout import (
+    CELSIUS,
     add_zone,
     edit_zone_subject,
     set_states,
@@ -30,6 +31,19 @@ ATTRS = {
     "max_temp": 30,
     "target_temp_step": 0.5,
     "hvac_action": "idle",
+}
+
+
+KNX_HEAT_ONLY = {
+    "hvac_modes": ["heat"],
+    "min_temp": 7,
+    "max_temp": 35,
+    "target_temp_step": 0.1,
+    "preset_modes": ["comfort", "standby", "auto", "building_protection", "economy"],
+    "current_temperature": 22.6,
+    "temperature": 16,
+    "preset_mode": "comfort",
+    "supported_features": 17,
 }
 
 
@@ -226,6 +240,46 @@ async def test_unusable_floor_falls_back_without_unsafe_commands(
     assert runtime.floor_plans["floor_floor"]["status"] == status
     assert runtime.hvac_demands["west"].demand == "heating_demand"
     assert not floor_calls(mocks)
+
+
+@pytest.mark.parametrize("setpoint", [16, 19])
+async def test_knx_heat_only_floor_controls_target_without_changing_preset(
+    hass, setpoint
+):
+    runtime, _, mocks = await setup_floor(hass)
+    hass.states.async_set(FLOOR, "heat", {**KNX_HEAT_ONLY, "temperature": setpoint})
+    await hass.async_block_till_done()
+    runtime.set_thermostat("west", floor_regulation=True)
+    await hass.async_block_till_done()
+    assert runtime.floor_plans["floor_floor"]["status"] == (
+        "in_sync" if setpoint == 16 else "setting_target"
+    )
+    assert [
+        (call.service, call.data.get("temperature")) for call in floor_calls(mocks)
+    ] == ([] if setpoint == 16 else [("set_temperature", 16)])
+    hass.states.async_set(FLOOR, "heat", KNX_HEAT_ONLY)
+    await hass.async_block_till_done()
+    assert runtime.floor_plans["floor_floor"]["status"] == "in_sync"
+    assert hass.states.get(FLOOR).attributes["preset_mode"] == "comfort"
+
+
+@pytest.mark.parametrize("mode", ["off", "cool"])
+async def test_heat_only_floor_cannot_claim_off_or_allow_cooling(hass, mode):
+    runtime, _, mocks = await setup_floor(hass, units=True)
+    hass.states.async_set(FLOOR, "heat", KNX_HEAT_ONLY)
+    await hass.async_block_till_done()
+    runtime.set_thermostat("west", floor_regulation=True, hvac_mode=mode)
+    if mode == "cool":
+        hass.states.async_set("sensor.west_temperature", "25", CELSIUS)
+    await hass.async_block_till_done()
+    plan = runtime.floor_plans["floor_floor"]
+    assert plan["status"] == "cannot_stop"
+    assert plan["command"] is None
+    assert not floor_calls(mocks)
+    if mode == "cool":
+        assert plan["cooling_blocked"] is True
+        assert runtime.hvac_demands["west"].reason == "floor_stop_unconfirmed"
+        assert runtime.hvac_demands["west"].demand == "neutral"
 
 
 async def test_number_floor_never_receives_commands(hass):

@@ -72,7 +72,9 @@ class FloorRuntimeMixin:
         if not trustworthy(state):
             return None, "unavailable"
         attrs = state.attributes
-        if not {"heat", "off"}.issubset(attrs.get("hvac_modes", ())):
+        # KNX heating-only thermostats can accept targets without an off mode.
+        # Stopping and cooling interlocks validate off support separately.
+        if "heat" not in attrs.get("hvac_modes", ()):
             return None, "unsupported_modes"
         if _setpoint(attrs.get("temperature")) is None:
             return None, "unsupported_setpoint"
