@@ -554,6 +554,11 @@ verwarmen: grens + hysterese − T; koelen: T − (grens − hysterese). Stand =
 0,5 °C) (zonder `off`), begrensd op de hoogste; zonder
 verwarmen of koelen de laagste. Gestuurd via `set_fan_mode`, eenmaal per gekozen
 stand en hooguit eens per `setpoint_interval_seconds`.
+Een herkende teruggemelde snelheid blijft gelden tot de afstand tot het doel
+de volgende snelheidsgrens met minstens `min(0,1 °C, auto_fan_step / 4)` overschrijdt,
+of onder de huidige grens minus die marge daalt. Meerdere standen mogen tegelijk
+worden overgeslagen bij een grote afwijking. Zonder bruikbare vorige stand geldt
+de gewone indeling; zonder temperatuur of in dry/fan_only geldt de laagste stand.
 **Ventilatorbediening.** De Zonentra-climate-entiteit publiceert geen `FAN_MODE`,
 `fan_mode` of `fan_modes`, zodat HomeKit geen ventilatorsnelheidsbediening aanmaakt.
 Ook de snelheidskeuze op de HA-thermostaat vervalt. De automatische regeling,
@@ -617,6 +622,9 @@ maximum en minimum. `day_type`: verwachting ouder dan 3 uur of leeg → `unknown
 maximum ≥ `warm_day_temperature` (22) → `warm`; ≤ `cold_day_temperature` (12) →
 `cold`; anders `neutral`. `demand_margins` geeft (verwarmen, koelen):
 warm → (`forecast_margin`, 0), koud → (0, `forecast_margin`), anders (0, 0).
+Tijdens een actieve handmatige temperatuurafwijking of actieve afspraak-/
+kantoorvoorbereiding zijn beide marges nul. Bij het vervallen van die bediening
+worden de weersmarges weer toegepast, met behoud van de normale vraaghysterese.
 `calculate_demand` start verwarmen pas onder grens − hysterese − marge
 (daartussen: neutraal, reden `heating_deferred_warm_day`) en koelen pas boven
 grens + hysterese + marge (`cooling_deferred_cold_day`); een lopende vraag houdt de
@@ -811,6 +819,10 @@ geschat. Handmatige wijzigingen worden gedurende de centrale overnameduur
 gevolgd, behalve noodzakelijke stopopdrachten voor raam/uit/koeling.
 De groepsschakelaar blokkeert airco en lamellen; vloerregeling is onafhankelijk.
 Regeling uit laat het laatste vloersetpoint en de apparaatstand staan.
+De koelblokkering staat los van die regeltoestemming: gekoppelde climate-vloeren
+moeten ook bij uitgeschakelde vloerregeling betrouwbare off-feedback geven.
+Dezelfde controle blokkeert cool/dry bij de laatste controle vóór verzending.
+Uitgeschakelde vloerregeling verstuurt daarbij geen vloercommando’s.
 
 De sensor Opwarming met airco volgt ruimtes met gekoppelde vloer en airco waarvan
 beide regelingen zijn ingeschakeld. Alleen gemelde aircoactiviteit heating,

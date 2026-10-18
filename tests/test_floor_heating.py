@@ -692,3 +692,47 @@ def test_new_heating_target_starts_fresh_monitoring_period():
     )
     assert changed.status == "monitoring"
     assert changed.memory.since == later
+
+
+@pytest.mark.parametrize("mode", ["cool", "dry"])
+async def test_manual_floor_keeps_cooling_interlock_without_floor_commands(hass, mode):
+    runtime, _, mocks = await setup_floor(hass, temperature="25", units=True)
+    await report(hass, "heat", hvac_action="heating")
+    assert not runtime.floor_regulated("west")
+    runtime.set_thermostat("west", regulation=True, hvac_mode=mode)
+    await hass.async_block_till_done()
+    assert runtime._floor_cooling_block("west")
+    assert runtime.floor_plans["floor_floor"]["cooling_blocked"] is True
+    assert not floor_calls(mocks)
+    item = next(i for i in runtime.building.equipment if i.kind == "hvac")
+    entry = {"equipment_id": item.id, "reason": "room_demand"}
+    assert not await runtime._call(
+        "set_hvac_mode", {"entity_id": item.entity_id, "hvac_mode": mode}, entry
+    )
+    assert entry["result"] == "blocked: floor_stop_unconfirmed"
+    await report(hass, "off", hvac_action="idle")
+    assert not runtime._floor_cooling_block("west")
+    assert not floor_calls(mocks)
+    if mode == "cool":
+        assert runtime.hvac_demands["west"].demand == "cooling_demand"
+
+
+async def test_disabling_floor_regulation_cannot_release_unconfirmed_stop(hass):
+    runtime, _, mocks = await setup_floor(hass, temperature="25", units=True)
+    await report(hass, "heat", hvac_action="heating")
+    runtime.set_thermostat("west", floor_regulation=True)
+    await hass.async_block_till_done()
+    assert runtime._floor_cooling_block("west")
+    for values in mocks.values():
+        values.clear()
+    runtime.set_thermostat("west", floor_regulation=False)
+    await hass.async_block_till_done()
+    assert runtime._floor_cooling_block("west")
+    assert runtime.hvac_demands["west"].reason == "floor_stop_unconfirmed"
+    assert not floor_calls(mocks)
+    await report(hass, "unavailable")
+    assert runtime._floor_cooling_block("west")
+    await report(hass, "off", hvac_action="heating")
+    assert runtime._floor_cooling_block("west")
+    await report(hass, "off", hvac_action="idle")
+    assert not runtime._floor_cooling_block("west")

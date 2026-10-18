@@ -20,6 +20,7 @@ SLOPE_SECONDS = 900.0  # Time constant of the smoothed slope.
 STALE_SAMPLE_SECONDS = 600.0  # Re-sample an unchanged value so the slope decays.
 AUTO_FAN = "auto"
 AUTO_FAN_STEP = 0.5  # °C of distance per fan speed step.
+AUTO_FAN_HYSTERESIS = 0.1  # °C around a speed boundary (at most 1/4 step).
 
 
 def window_state(
@@ -92,23 +93,36 @@ def auto_fan(
     cooling_limit: float | None,
     hysteresis: float,
     step_size: float = AUTO_FAN_STEP,
+    *,
+    previous: str | None = None,
 ) -> str | None:
     """Fan speed for the automatic fan: one step per ``step_size`` °C (default
     0.5, a central setting) from the target.
 
     ``speeds`` are the unit's fan speeds from low to high, without off/auto.
+    The reported previous speed holds within a small band around each boundary.
     Without heating or cooling (dry, fan only, unknown) the lowest speed runs.
     """
     if not speeds:
         return None
-    distance = 0.0
-    if room_temperature is not None:
-        if mode == "heat" and heating_limit is not None:
-            distance = heating_limit + hysteresis - room_temperature
-        elif mode == "cool" and cooling_limit is not None:
-            distance = room_temperature - (cooling_limit - hysteresis)
-    step = int(max(0.0, distance) / step_size)
-    return speeds[min(len(speeds) - 1, step)]
+    if room_temperature is None:
+        return speeds[0]
+    if mode == "heat" and heating_limit is not None:
+        distance = heating_limit + hysteresis - room_temperature
+    elif mode == "cool" and cooling_limit is not None:
+        distance = room_temperature - (cooling_limit - hysteresis)
+    else:
+        return speeds[0]
+    distance = max(0.0, distance)
+    if previous not in speeds:
+        return speeds[min(len(speeds) - 1, int(distance / step_size))]
+    step = speeds.index(previous)
+    margin = min(AUTO_FAN_HYSTERESIS, step_size / 4)
+    while step < len(speeds) - 1 and distance >= (step + 1) * step_size + margin:
+        step += 1
+    while step > 0 and distance < step * step_size - margin:
+        step -= 1
+    return speeds[step]
 
 
 def vane_command(

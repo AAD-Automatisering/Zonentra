@@ -43,6 +43,9 @@ via centrale **Ruimteregeling**, met een afwijking per ruimte. Bij koeling wacht
 de airco op bevestigd uitgeschakelde vloerthermostaten. De vloer blijft uit
 zolang een airco in dezelfde ruimte op cool/dry staat. Uitschakelen van de
 vloerregeling laat de laatste instelling van de vloerthermostaat staan.
+De koelblokkering blijft daarbij actief: ook bij uitgeschakelde vloerregeling
+moeten gekoppelde vloerthermostaten betrouwbaar `off` melden voordat de airco
+mag koelen of ontvochtigen. Zonentra stuurt de vloer dan geen commando’s.
 Een KNX-vloerthermostaat met alleen `hvac_modes: heat` wordt ook ondersteund voor
 het instellen van de doeltemperatuur. Zonder `off` kan Zonentra de vloer niet
 uitschakelen: dan verschijnt **Uitschakelen niet ondersteund** en blijft aircokoeling
@@ -93,6 +96,11 @@ Ruimtes nemen standaard centrale instellingen over en kunnen daarvan afwijken.
 ook als er al lokale voorbereidingswaarden zijn opgeslagen. Alleen een expliciete
 keuze voor uit schakelt over naar die lokale waarden.
 Comfortgrenzen stel je in op het centrale apparaat of het ruimteapparaat.
+Tijdens een tijdelijke handmatige temperatuurafwijking worden de uitstelmarges
+van de weersverwachting niet toegepast. Na afloop gelden die weer; sensorvalidatie,
+raamdetectie en schakeltijden blijven steeds gelden. De eigen automatische
+ventilator gebruikt rond elke snelheidsgrens 0,1 °C hysterese (bij kleine stappen
+maximaal een kwart van de stap), zodat kleine meetwisselingen geen standwissel geven.
 Een geldige, uitsluitend verwarmende of koelende vraag wordt door de groep gevolgd,
 ook bij een kleine of nul-score tijdens het afmaken van de kamerhysterese.
 De minimale vraagscore en verschilgrens kiezen alleen tussen tegengestelde vragen.

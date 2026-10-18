@@ -56,7 +56,9 @@ class FloorRuntimeMixin:
         )
 
     def _floor_cooling_block(self, zone_id):
-        return self.floor_regulated(zone_id) and any(
+        # Observing a linked floor does not require permission to control it.
+        # Switching regulation off must never release unconfirmed cooling.
+        return any(
             item.kind == "floor_heating"
             and item.zone_id == zone_id
             and item.entity_id.startswith("climate.")

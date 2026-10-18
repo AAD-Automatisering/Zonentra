@@ -2,6 +2,7 @@
 
 from datetime import timedelta
 
+import pytest
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import entity_registry as er
 from homeassistant.util import dt as dt_util
@@ -181,3 +182,49 @@ async def test_invalid_weather_unit_disables_forecast_policy(hass):
     central, _ = await office(hass)
     assert central.runtime_data.day_type == "unknown"
     assert central.runtime_data.forecast_error == "invalid_forecast"
+
+
+@pytest.mark.parametrize(
+    "forecast_temperatures,room_temperature,expected_demand,expected_deferral",
+    [
+        ((25, 26, 27), "21.5", "heating_demand", "heating_deferred_warm_day"),
+        ((4, 6, 9), "24.5", "cooling_demand", "cooling_deferred_cold_day"),
+    ],
+)
+async def test_manual_target_overrides_forecast_only_until_it_expires(
+    hass,
+    freezer,
+    forecast_temperatures,
+    room_temperature,
+    expected_demand,
+    expected_deferral,
+):
+    weather(hass, *forecast_temperatures)
+    central, zone = await office(hass, temperature=room_temperature)
+    runtime = central.runtime_data
+    assert runtime.zone_demands["west"].reason == expected_deferral
+    climate_id = entity(hass, "climate", f"{zone.entry_id}_thermostat")
+    await hass.services.async_call(
+        "climate",
+        "set_temperature",
+        {"entity_id": climate_id, "target_temp_low": 22, "target_temp_high": 24},
+        blocking=True,
+    )
+    await hass.async_block_till_done()
+    assert runtime.thermostat("west").manual
+    assert runtime.zone_demands["west"].demand == expected_demand
+    # A manual target never bypasses source validation.
+    hass.states.async_set("sensor.west_temperature", "unavailable")
+    await hass.async_block_till_done()
+    assert runtime.zone_demands["west"].demand == "unknown"
+    hass.states.async_set("sensor.west_temperature", room_temperature, CELSIUS)
+    await hass.async_block_till_done()
+    assert runtime.zone_demands["west"].demand == expected_demand
+    # Stop the current hysteresis cycle before the override expires.
+    hass.states.async_set("sensor.west_temperature", "23", CELSIUS)
+    await hass.async_block_till_done()
+    await later(hass, freezer, minutes=31)
+    assert not runtime.thermostat("west").manual
+    hass.states.async_set("sensor.west_temperature", room_temperature, CELSIUS)
+    await hass.async_block_till_done()
+    assert runtime.zone_demands["west"].reason == expected_deferral

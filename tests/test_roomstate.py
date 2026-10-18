@@ -237,3 +237,26 @@ def test_vane_switch_for_auto_or_swing():
     )
     assert vane_command("input_boolean.vane", "heat", "on", "OFF")[1] == "turn_off"
     assert vane_command("switch.vane_auto", "cool", "up", "on") is None
+
+
+@pytest.mark.parametrize("mode", ["heat", "cool"])
+def test_auto_fan_hysteresis_retains_speed_near_boundary(mode):
+    def choose(distance, previous):
+        room = 21.3 - distance if mode == "heat" else 23.7 + distance
+        return auto_fan(SPEEDS, mode, room, 21, 24, 0.3, previous=previous)
+
+    assert choose(0.51, "25%") == "25%"
+    assert choose(0.49, "50%") == "50%"
+    assert choose(0.65, "25%") == "50%"
+    assert choose(0.35, "50%") == "25%"
+    assert choose(2.0, "25%") == "100%"
+    assert choose(0, "100%") == "25%"
+
+
+def test_auto_fan_hysteresis_handles_custom_steps_and_unknown_previous():
+    assert auto_fan(SPEEDS, "heat", 21.09, 21, 24, 0.3, 0.2, previous="25%") == "25%"
+    assert auto_fan(SPEEDS, "heat", 21.01, 21, 24, 0.3, 0.2, previous="25%") == "50%"
+    assert auto_fan(SPEEDS, "heat", 20.7, 21, 24, 0.3, previous="auto") == "50%"
+    assert auto_fan(SPEEDS, "dry", 27, 21, 24, 0.3, previous="100%") == "25%"
+    assert auto_fan(SPEEDS, "heat", None, 21, 24, 0.3, previous="100%") == "25%"
+    assert auto_fan((), "heat", 20, 21, 24, 0.3, previous="100%") is None

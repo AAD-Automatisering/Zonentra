@@ -326,3 +326,43 @@ async def test_fan_left_alone_with_the_fan_switch_off(hass, freezer):
     assert not [call for call in calls(mocks) if call[0] == "set_fan_mode"]
     assert "fan_modes" not in hass.states.get(climate_id).attributes
     assert state(hass, zone, "auto_fan").attributes["in_use"] is False
+
+
+async def test_automatic_fan_does_not_hunt_after_feedback_and_interval(hass, freezer):
+    from tests.test_review_logic_fixes import standalone
+
+    mocks = await mock_climate(hass)
+    runtime = standalone(hass, temperature="20", fan="25%")
+    try:
+
+        def temperature(value):
+            hass.states.async_set("sensor.review_temperature", str(value), CELSIUS)
+            runtime.refresh()
+
+        # Keep a heating cycle active, close to the first fan-speed boundary.
+        temperature(21.79)
+        runtime.set_thermostat("west", regulation=True)
+        await hass.async_block_till_done()
+        assert not mocks["set_fan_mode"]
+        assert runtime.auto_fans["west"] == "25%"
+        temperature(21.81)
+        await hass.async_block_till_done()
+        assert not mocks["set_fan_mode"]
+        temperature(21.65)
+        await hass.async_block_till_done()
+        assert [c.data["fan_mode"] for c in mocks["set_fan_mode"]] == ["50%"]
+        source = hass.states.get(UNIT)
+        hass.states.async_set(UNIT, "heat", {**source.attributes, "fan_mode": "50%"})
+        runtime.refresh()
+        await hass.async_block_till_done()
+        freezer.tick(301)
+        for value in (21.79, 21.81, 21.79):
+            temperature(value)
+            await hass.async_block_till_done()
+            assert runtime.auto_fans["west"] == "50%"
+        assert len(mocks["set_fan_mode"]) == 1
+        temperature(21.95)
+        await hass.async_block_till_done()
+        assert [c.data["fan_mode"] for c in mocks["set_fan_mode"]] == ["50%", "25%"]
+    finally:
+        runtime.close()

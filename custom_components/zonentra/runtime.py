@@ -369,20 +369,19 @@ class BuildingRuntime(
         )
         demands = {}
         for zone in self.building.zones:
+            explicit_target = (
+                self.thermostat(zone.id).manual
+                or self.booking_plans[zone.id].active
+                or self.office_plans[zone.id].active
+            )
             demand = calculate_demand(
                 zone,
                 self.zone_snapshots[zone.id],
                 self.zone_demands[zone.id].demand
                 if zone.id in self.zone_demands
                 else "unknown",
-                0
-                if self.booking_plans[zone.id].active
-                or self.office_plans[zone.id].active
-                else heating_margin,
-                0
-                if self.booking_plans[zone.id].active
-                or self.office_plans[zone.id].active
-                else cooling_margin,
+                0 if explicit_target else heating_margin,
+                0 if explicit_target else cooling_margin,
             )
             # Thermostat mode: off asks nothing, heat/cool only one direction.
             demand = room_demand(self.thermostat(zone.id).hvac_mode, demand)
@@ -1144,12 +1143,16 @@ class BuildingRuntime(
             if not units or not speeds:
                 continue
             running = next(
-                (u.selected_mode for u in units if u.selected_mode in UNIT_RUNNING),
+                (u for u in units if u.selected_mode in UNIT_RUNNING),
                 None,
             )
             demand = self.zone_demands[zone.id].demand
-            mode = running or {"heating_demand": "heat", "cooling_demand": "cool"}.get(
-                demand, "off"
+            mode = (
+                running.selected_mode
+                if running
+                else {"heating_demand": "heat", "cooling_demand": "cool"}.get(
+                    demand, "off"
+                )
             )
             snapshot = self.zone_snapshots[zone.id]
             previews[zone.id] = auto_fan(
@@ -1162,6 +1165,7 @@ class BuildingRuntime(
                 snapshot.cooling_limit.value,
                 zone.hysteresis,
                 self.building.settings.auto_fan_step,
+                previous=running.fan_mode if running else None,
             )
         self.auto_fans = previews
 
@@ -1208,6 +1212,7 @@ class BuildingRuntime(
                 snapshot.cooling_limit.value,
                 zone.hysteresis,
                 self.building.settings.auto_fan_step,
+                previous=unit.fan_mode,
             )
             self.auto_fans[item.zone_id] = desired
             last = self.fan_sent_at.get(item.id)
