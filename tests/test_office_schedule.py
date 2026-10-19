@@ -13,6 +13,10 @@ from tests.test_central_options import open_section
 from tests.test_entry_layout import CELSIUS, add_zone, setup_central, zone_options
 from tests.test_thermostat_runtime import clear, mock_climate
 
+# 09:00 in HA's default US/Pacific timezone keeps ordinary openings on today.
+# The local-midnight test below explicitly moves the clock across the boundary.
+pytestmark = pytest.mark.freeze_time("2026-10-19T16:00:00+00:00")
+
 SCHEDULE = "schedule.office_hours"
 PRESENCE = "input_boolean.building_present"
 WORKDAY = "binary_sensor.workday"
