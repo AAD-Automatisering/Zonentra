@@ -161,34 +161,42 @@ class ThermalSample:
     outdoor_band: str
 
 
-def learn_rate(rates, sample, now, temperature, mode, outdoor=None):
+def learn_rate(
+    rates, sample, now, temperature, mode, outdoor=None, *, diagnostics=None
+):
     """Learn only from sustained heating/cooling, not passive temperature drift."""
+
+    def result(rates, sample, reason):
+        if diagnostics is not None:
+            diagnostics["reason"] = reason
+        return rates, sample
+
     if (
         temperature is None
         or not math.isfinite(temperature)
         or mode not in ("heating", "cooling")
     ):
-        return rates, None
+        return result(rates, None, "invalid_measurement_or_mode")
     current = ThermalSample(now, temperature, mode, outdoor_band(outdoor))
     if (
         sample is None
         or sample.mode != mode
         or sample.outdoor_band != current.outdoor_band
     ):
-        return rates, current
+        return result(rates, current, "sample_started")
     if now <= sample.at:
-        return rates, sample
+        return result(rates, sample, "non_increasing_timestamp")
     minutes = (now - sample.at).total_seconds() / 60
     if minutes < MIN_SAMPLE_MINUTES:
-        return rates, sample
+        return result(rates, sample, "sample_too_short")
     if minutes > MAX_SAMPLE_MINUTES:
-        return rates, current
+        return result(rates, current, "sample_gap_too_long")
     change = temperature - sample.temperature
     if change == 0:
-        return rates, sample
+        return result(rates, sample, "no_temperature_change")
     rate = (change if mode == "heating" else -change) / minutes
     if not MIN_RATE <= rate <= MAX_RATE:
-        return rates, current
+        return result(rates, current, "rate_out_of_range")
     previous = getattr(rates, mode)
     updated = getattr(rates, f"{mode}_updated")
     old = datetime.fromisoformat(updated) if updated else None
@@ -205,15 +213,19 @@ def learn_rate(rates, sample, now, temperature, mode, outdoor=None):
     learned = (
         rate if previous is None else previous * (1 - RATE_ALPHA) + rate * RATE_ALPHA
     )
-    return replace(
-        rates,
-        **{
-            mode: learned,
-            f"{mode}_samples": count + 1,
-            f"{mode}_variance": variance,
-            f"{mode}_updated": now.isoformat(),
-        },
-    ), current
+    return result(
+        replace(
+            rates,
+            **{
+                mode: learned,
+                f"{mode}_samples": count + 1,
+                f"{mode}_variance": variance,
+                f"{mode}_updated": now.isoformat(),
+            },
+        ),
+        current,
+        "sample_recorded",
+    )
 
 
 def parse_bookings(events, local_timezone: tzinfo):

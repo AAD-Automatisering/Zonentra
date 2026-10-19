@@ -62,9 +62,8 @@ async def test_room_state_sensors(hass, freezer):
     assert state(hass, zone, "window").state == "closed"
     assert float(state(hass, zone, "ema_temperature").state) == 21
     assert state(hass, zone, "temperature_slope").state == "unknown"  # One sample.
-    assert state(hass, zone, "regulated_setpoint").attributes["status"] == (
-        "unit_not_running"
-    )
+    assert state(hass, zone, "setpoint_status").state == ("unit_not_running")
+    assert state(hass, zone, "regulated_setpoint").state == "unavailable"
     assert state(hass, zone, "window_bypass", "switch").state == "off"
     # The room sensor fails: unsafe, and no regulation on it.
     hass.states.async_set("sensor.west_temperature", "unavailable")
@@ -76,6 +75,21 @@ async def test_room_state_sensors(hass, freezer):
     await hass.async_block_till_done()
     assert state(hass, zone, "safety").state == "safe"
     assert float(state(hass, zone, "temperature_slope").state) > 0
+
+
+async def test_regulated_setpoint_tracks_available_calculation(hass, freezer):
+    """Stopped units expose an explanation rather than a stale temperature."""
+    mocks = await mock_climate(hass)
+    central, zone = await office(hass, freezer, mocks)
+    central.runtime_data.set_thermostat("west", regulation=True)
+    await later(hass, freezer, minutes=4)
+    await unit(hass, "heat", **KNX)
+    calculated = state(hass, zone, "regulated_setpoint")
+    assert float(calculated.state) > 0
+    await unit(hass, "off", **KNX)
+    inactive = state(hass, zone, "regulated_setpoint")
+    assert inactive.state == "unavailable"
+    assert state(hass, zone, "setpoint_status").state == "manual_override"
 
 
 async def test_open_window_stops_the_room(hass, freezer):

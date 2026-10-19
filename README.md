@@ -49,7 +49,7 @@ Een KNX-vloerthermostaat met alleen `hvac_modes: heat` wordt ook ondersteund voo
 het instellen van de doeltemperatuur. Zonder `off` kan Zonentra de vloer niet
 uitschakelen: dan verschijnt **Uitschakelen niet ondersteund** en blijft aircokoeling
 geblokkeerd zolang de vloer niet betrouwbaar uit meldt.
-De sensor **Opwarming met airco** signaleert langdurig onvoldoende opwarming;
+De sensor **Controle opwarmvoortgang airco** signaleert langdurig onvoldoende opwarming;
 hij schakelt geen extra gasverwarming in.
 **Regenbeveiliging** staat standaard aan zodra een weerbron is gekoppeld. De
 actuele toestand van de centrale `weather`-entiteit wordt gebruikt, ook die van
@@ -102,6 +102,11 @@ Het interval voor setpoint- of ventilatorstandwijzigingen geldt per airco voor
 beide regelingen. Handmatige bediening van een gekoppelde airco kan de automatische
 aansturing tijdelijk pauzeren; dit staat los van tijdelijke temperatuurdoelen op
 de Zonentra-thermostaat.
+**Geregeld setpoint** toont alleen een berekende aircotemperatuur. Zonder
+berekening staat deze temperatuursensor op **Niet beschikbaar**; de diagnostische
+sensor **Setpointstatus** legt uit waarom, bijvoorbeeld omdat de airco niet verwarmt
+of koelt. Bij meerdere airco’s heeft een beschikbare berekening voorrang op een
+airco zonder actief setpoint. Ook bij simulatie blijft de berekening zichtbaar.
 **Gebruik centrale instellingen voor afspraakvoorbereiding** staat standaard aan,
 ook als er al lokale voorbereidingswaarden zijn opgeslagen. Alleen een expliciete
 keuze voor uit schakelt over naar die lokale waarden.
@@ -179,6 +184,26 @@ Een opening op een volgende dag wordt met deze sensor pas vanaf lokale middernac
 beoordeeld: de waarde voor vandaag voorspelt geen feestdagen op andere datums.
 De sensor **Klimaatvraag** toont `not_workday`, `workday_unknown` of
 `waiting_for_workday` als reden voor het overslaan of uitstellen.
+
+De gedownloade diagnose bevat bij `office_schedule` én `bookings` de
+`learned_profiles` per buitentemperatuurgebied, inclusief aantal meetperiodes,
+leeftijd, spreiding en betrouwbaarheid. `learning.profile_quality` toont ook bij
+een nog leeg profiel waarom de standaard opwarmsnelheid wordt gebruikt.
+`preconditioning_settings` toont de effectieve beginsnelheden, marge en maximumtijd.
+
+`learning.reason` verklaart het actuele inleren: bijvoorbeeld
+`no_active_heating_or_cooling` bij gemelde stilstand (`idle`),
+`waiting_for_fresh_temperature_report` als er nog geen meting sinds de start van
+verwarmen/koelen is, of `waiting_for_temperature_report` als de vorige meting al
+verwerkt is. `learning.blockers` toont alle actuele blokkades, zoals uitgeschakelde
+ruimteregeling, een open raam of handmatige bediening. `activity_source` laat zien
+of de activiteit uit `hvac_action` komt of uit de gekozen bedrijfsmodus is afgeleid.
+Het resultaat van de laatste beoordeelde meetperiode blijft in `learning.last_sample`
+staan, ook als de actuele reden alweer wachten op een nieuwe meting is.
+Een lerende ruimte heeft niet meteen een betrouwbaar profiel; een tijdelijk
+stilstaande ruimte kan juist al wel een bruikbaar opgeslagen profiel hebben.
+Deze uitleg verandert de leer- en regelvoorwaarden niet en exporteert geen ruwe
+ruimtetemperaturen of namen van gekoppelde apparaten.
 
 Het centrale openingstijdenschema geldt voor alle ruimtes zonder agenda; er is
 geen instelling per ruimte voor het schema. De voorbereiding gebruikt temperatuurverschil,

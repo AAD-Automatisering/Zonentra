@@ -610,7 +610,30 @@
         }
       },
       "regulated_setpoint": {
-        "name": "Regulated setpoint"
+        "name": "Regulated setpoint",
+        "state_attributes": {
+          "status": {
+            "name": "Calculation status",
+            "state": {
+              "no_active_setpoint": "No active setpoint",
+              "unit_not_running": "Air conditioner is not heating or cooling",
+              "unit_unavailable": "Air conditioner unavailable",
+              "manual_override": "Manual override active",
+              "no_setpoint_support": "Air conditioner reports no target temperature",
+              "room_temperature_unknown": "Room temperature unavailable",
+              "limits_unknown": "Temperature limits unavailable",
+              "group_disabled": "Group disabled",
+              "waiting_for_switch_state": "Waiting for group switch state",
+              "minimum_on_time": "Waiting for minimum run time",
+              "stopping_for_changeover": "Stopping air conditioner for changeover",
+              "changeover_unconfirmed": "Waiting for stop confirmation",
+              "changeover_wait": "Waiting for changeover",
+              "in_sync": "Setpoint matches target",
+              "interval": "Waiting for update interval",
+              "setpoint_changed": "New setpoint calculated"
+            }
+          }
+        }
       },
       "ema_temperature": {
         "name": "Average temperature"
@@ -675,13 +698,34 @@
         }
       },
       "heating_progress": {
-        "name": "Airco heating progress",
+        "name": "Air conditioner warm-up monitoring",
         "state": {
-          "idle": "Not monitoring",
+          "idle": "Warm-up monitoring inactive",
           "monitoring": "Monitoring warming",
           "adequate": "Near heating target",
           "insufficient": "Insufficient warming",
           "unknown": "Insufficient measurements"
+        }
+      },
+      "setpoint_status": {
+        "name": "Setpoint status",
+        "state": {
+          "no_active_setpoint": "No active setpoint",
+          "unit_not_running": "Air conditioner is not heating or cooling",
+          "unit_unavailable": "Air conditioner unavailable",
+          "manual_override": "Manual override active",
+          "no_setpoint_support": "Air conditioner reports no target temperature",
+          "room_temperature_unknown": "Room temperature unavailable",
+          "limits_unknown": "Temperature limits unavailable",
+          "group_disabled": "Group disabled",
+          "waiting_for_switch_state": "Waiting for group switch state",
+          "minimum_on_time": "Waiting for minimum run time",
+          "stopping_for_changeover": "Stopping air conditioner for changeover",
+          "changeover_unconfirmed": "Waiting for stop confirmation",
+          "changeover_wait": "Waiting for changeover",
+          "in_sync": "Setpoint matches target",
+          "interval": "Waiting for update interval",
+          "setpoint_changed": "New setpoint calculated"
         }
       }
     },

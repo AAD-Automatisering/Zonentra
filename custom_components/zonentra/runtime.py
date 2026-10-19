@@ -221,6 +221,7 @@ class BuildingRuntime(
         self.thermal_reports: dict = {}
         self.thermal_started: dict = {}
         self.thermal_context: dict = {}
+        self.thermal_learning: dict = {}  # Latest explanation, recomputed on refresh.
         self.thermal_store = None
         # Coordination and manual overrides survive reloads, not HA restarts.
         self.overrides = {}

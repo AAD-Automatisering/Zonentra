@@ -610,7 +610,30 @@
         }
       },
       "regulated_setpoint": {
-        "name": "Geregeld setpoint"
+        "name": "Geregeld setpoint",
+        "state_attributes": {
+          "status": {
+            "name": "Berekeningsstatus",
+            "state": {
+              "no_active_setpoint": "Geen actief setpoint",
+              "unit_not_running": "Airco verwarmt of koelt niet",
+              "unit_unavailable": "Airco niet beschikbaar",
+              "manual_override": "Handmatige bediening actief",
+              "no_setpoint_support": "Airco meldt geen insteltemperatuur",
+              "room_temperature_unknown": "Ruimtetemperatuur niet beschikbaar",
+              "limits_unknown": "Temperatuurgrenzen niet beschikbaar",
+              "group_disabled": "Groep uitgeschakeld",
+              "waiting_for_switch_state": "Wachten op groepsschakelaar",
+              "minimum_on_time": "Wachten op minimale draaitijd",
+              "stopping_for_changeover": "Airco stoppen voor omschakelen",
+              "changeover_unconfirmed": "Wachten op bevestiging uitschakelen",
+              "changeover_wait": "Wachten voor omschakelen",
+              "in_sync": "Setpoint op gewenste waarde",
+              "interval": "Wachten op wijzigingsinterval",
+              "setpoint_changed": "Nieuw setpoint berekend"
+            }
+          }
+        }
       },
       "ema_temperature": {
         "name": "Gemiddelde temperatuur"
@@ -675,13 +698,34 @@
         }
       },
       "heating_progress": {
-        "name": "Opwarming met airco",
+        "name": "Controle opwarmvoortgang airco",
         "state": {
-          "idle": "Geen actieve controle",
+          "idle": "Opwarmcontrole niet actief",
           "monitoring": "Opwarming volgen",
           "adequate": "Voldoende op temperatuur",
           "insufficient": "Onvoldoende opwarming",
           "unknown": "Onvoldoende meetgegevens"
+        }
+      },
+      "setpoint_status": {
+        "name": "Setpointstatus",
+        "state": {
+          "no_active_setpoint": "Geen actief setpoint",
+          "unit_not_running": "Airco verwarmt of koelt niet",
+          "unit_unavailable": "Airco niet beschikbaar",
+          "manual_override": "Handmatige bediening actief",
+          "no_setpoint_support": "Airco meldt geen insteltemperatuur",
+          "room_temperature_unknown": "Ruimtetemperatuur niet beschikbaar",
+          "limits_unknown": "Temperatuurgrenzen niet beschikbaar",
+          "group_disabled": "Groep uitgeschakeld",
+          "waiting_for_switch_state": "Wachten op groepsschakelaar",
+          "minimum_on_time": "Wachten op minimale draaitijd",
+          "stopping_for_changeover": "Airco stoppen voor omschakelen",
+          "changeover_unconfirmed": "Wachten op bevestiging uitschakelen",
+          "changeover_wait": "Wachten voor omschakelen",
+          "in_sync": "Setpoint op gewenste waarde",
+          "interval": "Wachten op wijzigingsinterval",
+          "setpoint_changed": "Nieuw setpoint berekend"
         }
       }
     },

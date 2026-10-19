@@ -6,7 +6,14 @@ from homeassistant.components.diagnostics import async_redact_data
 from homeassistant.config_entries import ConfigEntryState
 
 from . import ZonentraConfigEntry, central_entry, entry_type
-from .bookings import rate_quality
+from .bookings import (
+    MAX_SAMPLE_MINUTES,
+    MIN_LEARNED_SAMPLES,
+    MIN_SAMPLE_MINUTES,
+    ThermalRates,
+    outdoor_band,
+    rate_quality,
+)
 from .models import ZONE_ENTITY_FIELDS, BuildingSettings
 from .observations import describe
 from .topology import EQUIPMENT_FIELDS, ZONE
@@ -54,6 +61,43 @@ SOURCE_FIELDS = (
 
 def _iso(value):
     return value.isoformat() if value else None
+
+
+def _learning_context(runtime, zone):
+    """Identical learning evidence for office rooms and calendar rooms."""
+    band = outdoor_band(runtime._booking_outdoor_temperature())
+    profiles = runtime.thermal_rates.get(zone.id, {})
+    current = profiles.get(band, ThermalRates())
+    return {
+        "uses_central_settings": zone.use_building_preconditioning,
+        "preconditioning_settings": {
+            "heating_rate_c_per_minute": zone.preconditioning_heating_rate,
+            "cooling_rate_c_per_minute": zone.preconditioning_cooling_rate,
+            "buffer_minutes": zone.preconditioning_buffer_minutes,
+            "max_minutes": zone.preconditioning_max_minutes,
+        },
+        "learning": {
+            **runtime.thermal_learning.get(zone.id, {}),
+            "outdoor_band": band,
+            "minimum_samples": MIN_LEARNED_SAMPLES,
+            "minimum_sample_minutes": MIN_SAMPLE_MINUTES,
+            "maximum_sample_minutes": MAX_SAMPLE_MINUTES,
+            "profile_quality": {
+                mode: rate_quality(mode, current, runtime.evaluated_at)
+                for mode in ("heating", "cooling")
+            },
+        },
+        "learned_profiles": {
+            band: {
+                **asdict(rates),
+                "quality": {
+                    mode: rate_quality(mode, rates, runtime.evaluated_at)
+                    for mode in ("heating", "cooling")
+                },
+            }
+            for band, rates in profiles.items()
+        },
+    }
 
 
 def _source_validation(runtime) -> list[dict]:
@@ -168,6 +212,7 @@ def _room_context(runtime, zone_ids):
                     "next_check": _iso(plan.next_check),
                 },
                 "active_band": runtime.zone_bands.get(zone.id),
+                **_learning_context(runtime, zone),
             }
             for zone in runtime.building.zones
             if zone.id in zone_ids
@@ -191,19 +236,9 @@ def _room_context(runtime, zone_ids):
                     runtime.booking_updated.get(zone.calendar_entity)
                 ),
                 "active_band": runtime.zone_bands.get(zone.id),
-                "uses_central_settings": zone.use_building_preconditioning,
                 "priority": runtime.zone_demands[zone.id].priority,
                 "last_result": runtime.booking_results.get(zone.id),
-                "learned_profiles": {
-                    band: {
-                        **asdict(rates),
-                        "quality": {
-                            mode: rate_quality(mode, rates, runtime.evaluated_at)
-                            for mode in ("heating", "cooling")
-                        },
-                    }
-                    for band, rates in runtime.thermal_rates.get(zone.id, {}).items()
-                },
+                **_learning_context(runtime, zone),
             }
             for zone in runtime.building.zones
             if zone.id in zone_ids and zone.calendar_entity

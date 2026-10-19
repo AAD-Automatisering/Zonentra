@@ -360,19 +360,33 @@ class BookingRuntimeMixin:
                 for u in units
             }
             mode = next(iter(modes)) if len(modes) == 1 else None
-            eligible = (
-                mode in ("heating", "cooling")
-                and self.regulated(zone.id)
-                and self.thermostat(zone.id).hvac_mode != "off"
-                and self.windows.get(zone.id) not in ("open", "opening", "unknown")
-                and temperature.quality == "valid"
-                and all(
-                    not self._group_block(item.group_id)
-                    and item.id not in self.overrides
-                    for item in self.building.equipment
-                    if item.kind == "hvac" and item.zone_id == zone.id
+            blockers = []
+            if not self.regulated(zone.id):
+                blockers.append("room_regulation_disabled")
+            if self.thermostat(zone.id).hvac_mode == "off":
+                blockers.append("thermostat_off")
+            if self.windows.get(zone.id) in ("open", "opening", "unknown"):
+                blockers.append("window_not_closed")
+            if temperature.quality != "valid":
+                blockers.append("invalid_room_temperature")
+            if mode not in ("heating", "cooling"):
+                blockers.append(
+                    "no_available_units"
+                    if not units
+                    else "mixed_unit_activity"
+                    if len(modes) > 1
+                    else "no_active_heating_or_cooling"
                 )
-            )
+            linked = [
+                item
+                for item in self.building.equipment
+                if item.kind == "hvac" and item.zone_id == zone.id
+            ]
+            if any(self._group_block(item.group_id) for item in linked):
+                blockers.append("group_disabled")
+            if any(item.id in self.overrides for item in linked):
+                blockers.append("manual_override")
+            eligible = not blockers
             outside = self._booking_outdoor_temperature()
             band = outdoor_band(outside)
             by_band = self.thermal_rates.setdefault(zone.id, {})
@@ -384,16 +398,41 @@ class BookingRuntimeMixin:
                 self.thermal_reports.pop(zone.id, None)
                 self.thermal_started[zone.id] = now
             reported = temperature.reported_at
+            previous_observation = self.thermal_learning.get(zone.id, {}).get(
+                "last_sample"
+            )
+            explanation = {
+                "last_sample": previous_observation,
+                "eligible": eligible,
+                "reason": blockers[0] if blockers else "waiting_for_temperature_report",
+                "blockers": blockers,
+                "mode": mode,
+                "activity_source": "reported_action"
+                if units and all(u.activity is not None for u in units)
+                else "selected_mode"
+                if units and all(u.activity is None for u in units)
+                else "mixed"
+                if units
+                else "none",
+                "available_units": len(units),
+                "linked_units": len(linked),
+                "reported_inactive_units": sum(u.activity == "inactive" for u in units),
+                "temperature_quality": temperature.quality,
+                "temperature_reported_at": reported.isoformat() if reported else None,
+            }
+            self.thermal_learning[zone.id] = explanation
             if not eligible:
                 self.thermal_samples[zone.id] = None
                 continue
             if reported is None or reported < self.thermal_started.get(zone.id, now):
+                explanation["reason"] = "waiting_for_fresh_temperature_report"
                 continue
             if reported <= self.thermal_reports.get(
                 zone.id, reported - timedelta(microseconds=1)
             ):
                 continue
             self.thermal_reports[zone.id] = reported
+            previous_sample = self.thermal_samples.get(zone.id)
             learned, sample = learn_rate(
                 rates,
                 self.thermal_samples.get(zone.id),
@@ -401,7 +440,17 @@ class BookingRuntimeMixin:
                 temperature.value if eligible else None,
                 mode,
                 outside,
+                diagnostics=explanation,
             )
+            explanation["last_sample"] = {
+                "reason": explanation["reason"],
+                "at": reported.isoformat(),
+                "mode": mode,
+                "outdoor_band": band,
+                "window_minutes": (reported - previous_sample.at).total_seconds() / 60
+                if previous_sample is not None
+                else None,
+            }
             self.thermal_samples[zone.id] = sample
             if learned != rates:
                 by_band[band] = learned

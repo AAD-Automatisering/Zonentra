@@ -835,7 +835,7 @@ moeten ook bij uitgeschakelde vloerregeling betrouwbare off-feedback geven.
 Dezelfde controle blokkeert cool/dry bij de laatste controle vóór verzending.
 Uitgeschakelde vloerregeling verstuurt daarbij geen vloercommando’s.
 
-De sensor Opwarming met airco volgt ruimtes met gekoppelde vloer en airco waarvan
+De sensor Controle opwarmvoortgang airco volgt ruimtes met gekoppelde vloer en airco waarvan
 beide regelingen zijn ingeschakeld. Alleen gemelde aircoactiviteit heating,
 preheating of defrosting tijdens warmtevraag telt; alleen de geselecteerde stand
 heat is onvoldoende bewijs. Na 60 minuten onafgebroken gemelde verwarmingsactiviteit
@@ -944,3 +944,23 @@ centraal bepaald. Buiten comfort geldt de bestaande setpointregeling. De proef
 wijzigt geen ventilatorcommando's, start-/stoptijden of laatste serviceguards.
 De ruimtevraagsensor toont de geselecteerde strategie en of de proef momenteel
 voor een ingeschakelde regeling in comfort geldt.
+
+
+## Uitleg van het thermisch inleren in diagnostiek
+
+Kantoorvoorbereiding en afspraakvoorbereiding exporteren dezelfde leercontext:
+`learned_profiles` bevat de opgeslagen profielen met `rate_quality` per richting;
+`learning.profile_quality` bevat ook de kwaliteit van een nog leeg profiel in het
+actuele buitentemperatuurgebied. De effectieve beginsnelheden, buffertijd en
+maximumtijd staan in `preconditioning_settings`.
+
+`learning` verklaart de actuele toelating tot het inleren met `eligible`,
+`blockers`, `mode`, bron van de activiteitsinterpretatie en het aantal beschikbare,
+gekoppelde en als inactief gemelde units. Er worden geen nieuwe voorwaarden voor
+leren toegevoegd. Een nog ontbrekend vers temperatuurrapport wordt onderscheiden
+van een reeds verwerkt rapport. De pure `learn_rate` kan optioneel de reden van
+zijn bestaande uitkomst meegeven; zijn profiel- en sample-resultaten blijven gelijk.
+`last_sample` bewaart de laatste beoordeelde meetperiode met reden, tijdstip,
+richting, buitentemperatuurgebied en tijdsduur, zonder de ruwe temperatuurwaarden.
+Het live leren en de betrouwbaarheid van eerder opgeslagen profielen zijn aparte
+zaken en worden daarom afzonderlijk weergegeven.

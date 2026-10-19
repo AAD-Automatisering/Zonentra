@@ -98,6 +98,7 @@ def _zone_entities(hass, entry) -> list:
         entities.append(HeatingProgressSensor(entry, zone, **shared))
     if options.get("indoor_units"):
         entities.append(RegulatedSetpointSensor(entry, zone, **shared))
+        entities.append(SetpointStatusSensor(entry, zone, **shared))
         entities.append(AutoFanSensor(entry, zone, **shared))
     if options.get("contact_entities"):  # 0.13.3: only with window contacts.
         entities.append(WindowSensor(entry, zone, **shared))
@@ -683,10 +684,21 @@ class RegulatedSetpointSensor(ZoneStateSensor):
     _attr_translation_key = "regulated_setpoint"
 
     def _plan(self):
+        if self.runtime is None:
+            return None
         plans = self.runtime.setpoint_plans
+        candidates = [plans[item.id] for item in self._units() if item.id in plans]
         return next(
-            (plans[item.id] for item in self._units() if item.id in plans), None
+            (plan for plan in candidates if plan.setpoint is not None),
+            candidates[0] if candidates else None,
         )
+
+    @property
+    def available(self):
+        if not super().available:
+            return False
+        plan = self._plan()
+        return plan is not None and plan.setpoint is not None
 
     @property
     def native_value(self):
@@ -697,11 +709,52 @@ class RegulatedSetpointSensor(ZoneStateSensor):
     def extra_state_attributes(self):
         plan = self._plan()
         return {
-            "status": plan.status if plan else None,
+            "status": plan.status if plan else "no_active_setpoint",
             "base": plan.base if plan else None,
             "offset": plan.offset if plan else None,
-            "room_regulation": self.runtime.regulated(self._zone.id),
+            "room_regulation": (
+                self.runtime.regulated(self._zone.id) if self.runtime else None
+            ),
         }
+
+
+class SetpointStatusSensor(RegulatedSetpointSensor):
+    """Explain an inactive calculation even when the numeric sensor is unavailable."""
+
+    key = "setpoint_status"
+    _attr_translation_key = "setpoint_status"
+    _attr_device_class = SensorDeviceClass.ENUM
+    _attr_native_unit_of_measurement = None
+    _attr_icon = "mdi:thermometer-check"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_options = [
+        "no_active_setpoint",
+        "unit_not_running",
+        "unit_unavailable",
+        "manual_override",
+        "no_setpoint_support",
+        "room_temperature_unknown",
+        "limits_unknown",
+        "group_disabled",
+        "waiting_for_switch_state",
+        "minimum_on_time",
+        "stopping_for_changeover",
+        "changeover_unconfirmed",
+        "changeover_wait",
+        "in_sync",
+        "interval",
+        "setpoint_changed",
+    ]
+
+    @property
+    def available(self):
+        runtime = self.runtime
+        return runtime is not None and self._present(runtime)
+
+    @property
+    def native_value(self):
+        plan = self._plan()
+        return plan.status if plan else "no_active_setpoint"
 
 
 class EmaTemperatureSensor(ZoneStateSensor):
