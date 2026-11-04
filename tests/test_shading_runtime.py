@@ -102,6 +102,29 @@ async def test_night_and_heating_open_the_screen(hass, freezer):
     )
 
 
+async def test_manual_closing_is_respected_before_reaching_the_end(hass, freezer):
+    moves = async_mock_service(hass, "cover", "set_cover_position")
+    central, _ = await office(hass, screen_open_delay_minutes=0)
+    runtime = central.runtime_data
+    hass.states.async_set("sensor.west_temperature", "20", CELSIUS)
+    runtime.set_thermostat("west", screen_regulation=True)
+    await hass.async_block_till_done()
+    assert not moves
+
+    # The wall button is visible in HA as a moving cover. Do not wait for
+    # 'closed': a position report while closing must not trigger an opening.
+    hass.states.async_set(SCREEN, "closing", {"current_position": 100})
+    await hass.async_block_till_done()
+    assert EQUIPMENT in runtime.screen_overrides
+    hass.states.async_set(SCREEN, "closing", {"current_position": 50})
+    await hass.async_block_till_done()
+    assert not moves
+    assert runtime.screen_moves[EQUIPMENT].status == "manual_override"
+    hass.states.async_set(SCREEN, "closed", {"current_position": 0})
+    await later(hass, freezer, minutes=60)
+    assert not moves
+
+
 async def test_person_taking_over_right_after_our_move(hass, freezer):
     """0.13.4: a person closing the screen at the room controller right after
     Zonentra opened it (command not yet confirmed) is respected too."""
@@ -121,7 +144,12 @@ async def test_person_taking_over_right_after_our_move(hass, freezer):
     assert [call.data["position"] for call in moves] == [100]  # Up: room cool.
     # Within the confirmation time the room controller sends it down again.
     hass.states.async_set(SCREEN, "opening", {"current_position": 0})
+    await hass.async_block_till_done()
+    assert EQUIPMENT not in runtime.screen_overrides
     hass.states.async_set(SCREEN, "closing", {"current_position": 20})
+    await hass.async_block_till_done()
+    assert EQUIPMENT in runtime.screen_overrides
+    assert not runtime.cover_tracker.pending
     hass.states.async_set(SCREEN, "closed", {"current_position": 0})
     await hass.async_block_till_done()
     assert runtime.last_transitions[EQUIPMENT][0] == "manual_screen"

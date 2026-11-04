@@ -134,12 +134,10 @@ class ShadingRuntimeMixin:
             if item.kind != "shading" or item.entity_id != entity_id:
                 continue
             if new is None or new.state in (
-                "opening",
-                "closing",
                 "unknown",
                 "unavailable",
             ):
-                return  # Wait for the end position.
+                return
             if new.attributes.get("restored") or new.attributes.get("assumed_state"):
                 return
             if (
@@ -160,7 +158,17 @@ class ShadingRuntimeMixin:
             )
             if pending is not None and self.cover_tracker.is_pending(entity_id, now):
                 expected = float(pending.expected_state)
-                if position is not None and abs(position - expected) < MIN_STEP:
+                if new.state in ("opening", "closing"):
+                    # Our own travel is not manual operation. A reversal is:
+                    # respect the wall button before it reaches an end stop.
+                    if position is None or (
+                        new.state == "opening"
+                        and expected >= position
+                        or new.state == "closing"
+                        and expected <= position
+                    ):
+                        return
+                elif position is not None and abs(position - expected) < MIN_STEP:
                     self.cover_tracker.confirm(entity_id, pending.expected_state, now)
                     self._cover_confirmation(
                         entity_id, pending.expected_state, "confirmed"
@@ -179,8 +187,8 @@ class ShadingRuntimeMixin:
                     entity_id, pending.expected_state, "superseded"
                 )
                 self.cover_tracker.cancel(entity_id)
-            elif old is None or (
-                cover_position(old) == position and old.state == new.state
+            elif old.state == new.state and (
+                new.state in ("opening", "closing") or cover_position(old) == position
             ):
                 return
             if _origin(event) == "automation":
