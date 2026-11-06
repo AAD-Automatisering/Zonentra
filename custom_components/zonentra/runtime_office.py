@@ -69,6 +69,16 @@ class OfficeRuntimeMixin:
                     self.overrides.pop(item.id, None)
             elif transition == "manual_on" and presence == "present":
                 self.room_controller_use.add(item.id)
+                self.overrides.pop(item.id, None)
+            # Migrate the old indefinite override on configuration reload. The
+            # room-use authorization remains, with ordinary regulation enabled.
+            override = self.overrides.get(item.id)
+            if (
+                item.id in self.room_controller_use
+                and override is not None
+                and override.expires_at is None
+            ):
+                self.overrides.pop(item.id, None)
 
     def _office_occupancy(self, zone, occupancy, sources, now):
         entity = self.building.settings.office_schedule_entity

@@ -215,8 +215,11 @@ Buiten openingstijden en op niet-werkdagen blijven die ruimtes op afwezig, behal
 tijdens geplande voorbereiding of een afspraak. Lokale bewegingsdetectie blijft werken.
 
 Schakelt iemand bij aanwezige gebouwstatus een airco zelf in via de roomcontroller,
-dan blijft die handmatige bediening gelden tot handmatig uitschakelen of het alarm
-weer aangaat, ook na sluitingstijd en voorbij de gewone overnameduur. Dit vereist
+dan blijft die ruimte in gebruik tot handmatig uitschakelen of het alarm
+weer aangaat, ook na sluitingstijd en voorbij de gewone overnameduur. Zonentra
+blijft daarbij temperatuur, ventilator en opwarmcorrectie automatisch regelen.
+Het inschakelen pauzeert de regeling niet. Een expliciete setpointwijziging door
+een Home Assistant-gebruiker behoudt de gewone tijdelijke regelpauze. Dit vereist
 het openingsschema, gebouwaanwezigheid en ingeschakelde handmatige overname.
 Alleen de betreffende ruimte krijgt comfort. Automatiseringen, Zonentra-opdrachten
 en een al draaiende airco bij opstart tellen niet als handmatig inschakelen.
@@ -369,3 +372,12 @@ Eco/Afwezig, thermostaat-uit en beveiligingen behouden voorrang. Alarm aan beëi
 de uitzondering. Handmatig uitschakelen van een airco in die ruimte onderdrukt de
 uitzondering tot het gebouw opnieuw afwezig is geweest; configuratieherladen bewaart
 die keuze, een volledige HA-herstart niet. De actieve band toont `workday_presence`.
+
+Bij de aircosensor **Regelactie** staan `room_controller_use`,
+`manual_override_active`, `override_started_at`, `override_expires_at` en
+`last_manual_event`. De laatste detectie bevat tijdstip, overgang en globale
+contextbron (`device`, `ha_user` of `automation`); deze bron bewijst niet wie de bediening deed.
+De detectie blijft bij configuratieherladen bewaard, maar begint na een volledige
+HA-herstart opnieuw. **Setpointstatus** verklaart waarom **Geregeld setpoint**
+eventueel geen waarde toont. Screenbediening heeft een afzonderlijke overname
+en maakt geen handmatige airco-overname aan.

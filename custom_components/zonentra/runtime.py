@@ -52,7 +52,6 @@ from .observations import (
 )
 from .override import (
     CommandTracker,
-    ManualOverride,
     classify_transition,
     update_override,
 )
@@ -236,6 +235,7 @@ class BuildingRuntime(
         self.room_controller_use: set[str] = set()
         self.workday_presence_suppressed: set[str] = set()
         self.last_transitions = {}
+        self.manual_events = {}
         self.coordination_memories = {}
         self.coordinations = {}
         self.unit_intents = {}
@@ -665,6 +665,7 @@ class BuildingRuntime(
         "room_controller_use",
         "workday_presence_suppressed",
         "last_transitions",
+        "manual_events",
         "command_tracker",
         "setpoint_tracker",
         "cover_tracker",
@@ -1895,6 +1896,14 @@ class BuildingRuntime(
             )
             if transition == "attribute_update" and trusted:
                 transition = self._setpoint_transition(entity_id, old, new, event, now)
+            if transition in ("manual_on", "manual_off", "manual_setpoint"):
+                self.manual_events[item.id] = {
+                    "at": now.isoformat(),
+                    "transition": transition,
+                    "from_mode": old_value,
+                    "to_mode": new_value,
+                    "origin": _origin(event),
+                }
             transitions[item.id] = transition
             self.last_transitions[item.id] = (transitions[item.id], now)
         return transitions
@@ -1920,6 +1929,17 @@ class BuildingRuntime(
             return "device_setpoint"
         return "manual_setpoint"
 
+    def manual_control_details(self, equipment_id):
+        """Bounded observed evidence; context is no proof of a person's identity."""
+        override = self.overrides.get(equipment_id)
+        return {
+            "room_controller_use": equipment_id in self.room_controller_use,
+            "override_started_at": override.started_at.isoformat()
+            if override
+            else None,
+            "last_manual_event": self.manual_events.get(equipment_id),
+        }
+
     def _plan(self, transitions, sources, now) -> None:
         """Update overrides and calculate group coordination and unit intents."""
         settings = self.building.settings
@@ -1928,9 +1948,14 @@ class BuildingRuntime(
             if item.kind != "hvac":
                 continue
             source = sources.get(item.entity_id)
+            transition = transitions.get(item.id)
+            if item.id in self.room_controller_use and transition == "manual_on":
+                # A room-controller start authorizes comfort, not suspension of
+                # temperature/fan control. Explicit setpoint changes still pause it.
+                transition = None
             override, event = update_override(
                 self.overrides.get(item.id),
-                transitions.get(item.id),
+                transition,
                 item.id,
                 source.state if source else None,
                 now,
@@ -1938,13 +1963,6 @@ class BuildingRuntime(
                 duration_minutes=settings.manual_override_duration_minutes,
                 regulated=self.regulated(item.zone_id),
             )
-            if item.id in self.room_controller_use:
-                override = ManualOverride(
-                    item.id,
-                    override.started_at if override else now,
-                    None,
-                    source.state if source else "unknown",
-                )
             if override:
                 overrides[item.id] = override
             if event:

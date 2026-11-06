@@ -151,7 +151,7 @@
         },
         "submit": "Apply and return",
         "data_description": {
-          "manual_override_enabled": "Pauses automatic control after manually switching on a linked air conditioner. With room regulation enabled, this also applies to manual switch-off and setpoint changes by a Home Assistant user. This is separate from temporary targets on the Zonentra thermostat.",
+          "manual_override_enabled": "Without an opening-hours schedule and building presence, manual switch-on temporarily pauses automatic control. With both configured, manual switch-on while present in comfort authorizes continued room use with automatic temperature and fan control. Manual switch-off and setpoint changes by a Home Assistant user are temporarily respected. This is separate from temporary targets on the Zonentra thermostat.",
           "setpoint_interval_seconds": "Used per air conditioner for both setpoint regulation and automatic fan speeds."
         }
       },
@@ -331,7 +331,7 @@
         },
         "data_description": {
           "office_schedule_entity": "Select a schedule helper. Ordinary rooms prepare automatically before opening, including while absent. A maximum 15-minute arrival grace follows opening; presence and motion then determine comfort. Calendar rooms continue to follow their bookings.",
-          "manual_override_enabled": "Pauses automatic control after manually switching on a linked air conditioner. With room regulation enabled, this also applies to manual switch-off and setpoint changes by a Home Assistant user. This is separate from temporary targets on the Zonentra thermostat.",
+          "manual_override_enabled": "Without an opening-hours schedule and building presence, manual switch-on temporarily pauses automatic control. With both configured, manual switch-on while present in comfort authorizes continued room use with automatic temperature and fan control. Manual switch-off and setpoint changes by a Home Assistant user are temporarily respected. This is separate from temporary targets on the Zonentra thermostat.",
           "setpoint_interval_seconds": "Used per air conditioner for both setpoint regulation and automatic fan speeds.",
           "workday_entity": "Separate from opening hours: on = workday, off = non-workday. Choose a sensor for today (offset 0). On non-workdays or with an unusable sensor, office preparation and arrival grace are skipped. Presence and calendar bookings still work. Without a sensor, only the schedule applies.",
           "screen_wind_protection": "Wind protection takes priority over manual operation. A current windy/windy-variant weather condition also activates protection when measured wind is below the configured limits.",

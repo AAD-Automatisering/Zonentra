@@ -769,9 +769,13 @@ bij een gekoppelde gebouwaanwezigheid geeft gebouwpresentie alleen met planstatu
 `present`/`default` vervangen door afwezig met reden `outside_office_hours`.
 Lokale beweging en agenda-afspraken behouden hun eigen bewijs van gebruik.
 Een waargenomen `manual_on` bij gebouwstatus present autoriseert alleen de
-betreffende ruimte (`room_controller_use`). De bijbehorende `ManualOverride` heeft
-geen eindtijd; een deadline/remaining van null betekent hier een actieve overname
-zonder timer. Handmatig uit, gebouw afwezig, thermostaat-uit, Eco/Afwezig of het
+betreffende ruimte (`room_controller_use`). Dit is een blijvende comfortvraag,
+zonder een `ManualOverride`: setpoint-, fan-, opwarmcorrectie en thermisch inleren
+blijven toegelaten onder hun eigen voorwaarden. Een herkende manual_on voor deze
+ruimte wordt niet nogmaals aan de getimede overnamelogica doorgegeven. Bestaande
+oude overnames zonder eindtijd worden bij refresh verwijderd met behoud van de
+ruimteautorisatie. Expliciete manual_setpoint blijft een tijdelijke overname.
+Handmatig uit, gebouw afwezig, thermostaat-uit, Eco/Afwezig of het
 verwijderen van schema/aanwezigheid/handmatige overname beëindigt die autorisatie.
 De autorisatie blijft over sluiting en configuratieherladen bestaan, maar niet
 over een HA-herstart. Automatiseringen, eigen opdrachten en initiële states
@@ -1035,3 +1039,11 @@ gelden niet als manual_off. Onderdrukking overleeft configuratieherladen, maar
 geen HA-herstart. Verwijderen/wijzigen van de gekozen ruimte wist oude
 onderdrukkingen. Handmatige roomcontroller-sessies blijven onafhankelijk en zijn
 ook in het weekend toegestaan.
+
+
+`manual_events` bewaart per airco de laatste herkende manual_on/manual_off/
+manual_setpoint met tijdstip, oude/nieuwe modus en globale contextbron. Eigen
+commando's en screen-events wijzigen dit record niet; latere attribuutupdates
+wissen het niet. De Regelactie-sensor en centrale/ruimtediagnostiek exporteren
+het naast de ruimteautorisatie en de start van een eventuele echte regelpauze.
+Er worden geen gebruikers-ID's of ruwe temperatuurwijzigingen opgeslagen.

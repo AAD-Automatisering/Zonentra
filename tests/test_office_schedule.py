@@ -459,10 +459,9 @@ async def test_disarming_outside_hours_only_allows_manually_selected_room(
     await hass.async_block_till_done()
     assert runtime.zone_bands["west"] == ("comfort", "room_controller_use")
     assert runtime.zone_bands["east"][0] == "away"
-    assert runtime.overrides["hvac_west_ac"].expires_at is None
+    assert "hvac_west_ac" not in runtime.overrides
     await later(hass, freezer, minutes=90)
-    assert runtime.overrides["hvac_west_ac"].active(dt_util.utcnow())
-    assert runtime.overrides["hvac_west_ac"].remaining_seconds(dt_util.utcnow()) is None
+    assert "hvac_west_ac" not in runtime.overrides
     assert await hass.config_entries.async_reload(central.entry_id)
     await hass.async_block_till_done()
     runtime = central.runtime_data
@@ -531,7 +530,7 @@ async def test_real_alarm_releases_manual_hold_and_sends_stop(hass, freezer):
     hass.states.async_set("climate.west_ac", "heat", {"temperature": 22})
     await hass.async_block_till_done()
     await later(hass, freezer, minutes=90)
-    assert runtime.overrides["hvac_west_ac"].active(dt_util.utcnow())
+    assert "hvac_west_ac" not in runtime.overrides
     clear(mocks)
     hass.states.async_set(alarm, "armed_away")
     await hass.async_block_till_done()
@@ -703,3 +702,129 @@ async def test_workday_room_selection_is_redacted(hass):
     await select_workday_room(hass, central)
     diagnostic = await async_get_config_entry_diagnostics(hass, central)
     assert '"workday_presence_zone_id": "**REDACTED**"' in json.dumps(diagnostic)
+
+
+async def test_room_controller_use_keeps_setpoint_fan_and_learning_active(
+    hass, freezer
+):
+    mocks = await mock_climate(hass)
+    hass.states.async_set("cover.review_screen", "open", {"current_position": 100})
+    central, room, _ = await office(
+        hass, start=300, shading_entities=["cover.review_screen"]
+    )
+    runtime = central.runtime_data
+    runtime.set_thermostat("west", regulation=True)
+    await later(hass, freezer, minutes=4)
+    hass.states.async_set(PRESENCE, "on")
+    await hass.async_block_till_done()
+    clear(mocks)
+    hass.states.async_set(
+        "climate.west_ac",
+        "heat",
+        {
+            "temperature": 22,
+            "hvac_action": "heating",
+            "fan_mode": "25%",
+            "fan_modes": ["25%", "50%", "75%", "100%"],
+        },
+    )
+    await hass.async_block_till_done()
+    equipment = "hvac_west_ac"
+    assert equipment in runtime.room_controller_use
+    assert equipment not in runtime.overrides
+    assert runtime.setpoint_plans[equipment].setpoint is not None
+    assert runtime.setpoint_plans[equipment].status != "manual_override"
+    assert mocks["set_temperature"]
+    assert mocks["set_fan_mode"]
+    assert runtime.thermal_learning["west"]["eligible"]
+    await later(hass, freezer, minutes=5)
+    hass.states.async_set("sensor.west_temperature", "21", CELSIUS, force_update=True)
+    await hass.async_block_till_done()
+    assert runtime.heating_corrections[equipment].status == "observing"
+    details = runtime.manual_control_details(equipment)
+    assert details["room_controller_use"]
+    assert details["override_started_at"] is None
+    assert details["last_manual_event"]["transition"] == "manual_on"
+    assert details["last_manual_event"]["from_mode"] == "off"
+    assert details["last_manual_event"]["to_mode"] == "heat"
+    initial_event = details["last_manual_event"]
+
+    # The afternoon screen remote only creates a screen override.
+    hass.states.async_set("cover.review_screen", "closed", {"current_position": 0})
+    await hass.async_block_till_done()
+    assert runtime.screen_overrides
+    assert equipment not in runtime.overrides
+    assert (
+        runtime.manual_control_details(equipment)["last_manual_event"] == initial_event
+    )
+    assert runtime.setpoint_plans[equipment].setpoint is not None
+    diagnostic = await async_get_config_entry_diagnostics(hass, room)
+    assert diagnostic["unit_intents"][0]["room_controller_use"]
+    assert not diagnostic["unit_intents"][0]["manual_override_active"]
+
+
+async def test_reload_migrates_old_indefinite_override_without_losing_room_use(hass):
+    from custom_components.zonentra.override import ManualOverride
+
+    central, _, _ = await office(hass, start=300)
+    runtime = central.runtime_data
+    hass.states.async_set(PRESENCE, "on")
+    hass.states.async_set("climate.west_ac", "heat", {"temperature": 22})
+    await hass.async_block_till_done()
+    equipment = "hvac_west_ac"
+    runtime.overrides[equipment] = ManualOverride(
+        equipment, dt_util.utcnow(), None, "heat"
+    )
+    assert await hass.config_entries.async_reload(central.entry_id)
+    await hass.async_block_till_done()
+    runtime = central.runtime_data
+    assert equipment in runtime.room_controller_use
+    assert equipment not in runtime.overrides
+    assert runtime.setpoint_plans[equipment].setpoint is not None
+
+
+async def test_screen_remote_does_not_start_airco_room_use(hass):
+    hass.states.async_set("cover.review_screen", "open", {"current_position": 100})
+    central, _, _ = await office(
+        hass, start=300, shading_entities=["cover.review_screen"]
+    )
+    runtime = central.runtime_data
+    hass.states.async_set(PRESENCE, "on")
+    await hass.async_block_till_done()
+    hass.states.async_set("cover.review_screen", "closed", {"current_position": 0})
+    await hass.async_block_till_done()
+    assert runtime.screen_overrides
+    assert not runtime.room_controller_use
+    assert not runtime.overrides
+    assert "hvac_west_ac" not in runtime.manual_events
+
+
+async def test_explicit_user_setpoint_still_temporarily_pauses_room_controller_use(
+    hass, freezer
+):
+    from homeassistant.core import Context
+
+    await mock_climate(hass)
+    central, _, _ = await office(hass, start=300)
+    runtime = central.runtime_data
+    runtime.set_thermostat("west", regulation=True)
+    hass.states.async_set(PRESENCE, "on")
+    hass.states.async_set("climate.west_ac", "heat", {"temperature": 22})
+    await hass.async_block_till_done()
+    equipment = "hvac_west_ac"
+    assert equipment in runtime.room_controller_use
+    assert equipment not in runtime.overrides
+    hass.states.async_set(
+        "climate.west_ac", "heat", {"temperature": 25}, context=Context(user_id="u")
+    )
+    await hass.async_block_till_done()
+    assert runtime.overrides[equipment].expires_at is not None
+    assert runtime.setpoint_plans[equipment].status == "manual_override"
+    details = runtime.manual_control_details(equipment)
+    assert details["last_manual_event"]["transition"] == "manual_setpoint"
+    assert details["last_manual_event"]["origin"] == "ha_user"
+    assert details["override_started_at"] is not None
+    await later(hass, freezer, minutes=31)
+    assert equipment in runtime.room_controller_use
+    assert equipment not in runtime.overrides
+    assert runtime.setpoint_plans[equipment].setpoint is not None

@@ -326,6 +326,7 @@ async def async_get_config_entry_diagnostics(hass, entry: ZonentraConfigEntry) -
                         },
                         "blocked_until": _iso(intent.blocked_until),
                         "override_expires_at": _iso(intent.override_expires_at),
+                        **runtime.manual_control_details(intent.equipment_id),
                     }
                     for intent in runtime.unit_intents.values()
                 ],
@@ -369,6 +370,7 @@ def _zone_diagnostics(hass, entry) -> dict:
                 },
                 "blocked_until": _iso(intent.blocked_until),
                 "override_expires_at": _iso(intent.override_expires_at),
+                **runtime.manual_control_details(intent.equipment_id),
             }
             for intent in runtime.unit_intents.values()
             if intent.zone_id == zone_id

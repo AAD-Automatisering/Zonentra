@@ -1007,6 +1007,7 @@ class UnitControlSensor(ZonentraDiagnosticSensor):
             "blocked_reason": intent.blocked_reason,
             "blocked_until": _iso(intent.blocked_until),
             "manual_override_active": intent.manual_override_active,
+            **self.runtime.manual_control_details(self.item.id),
             "override_remaining_seconds": intent.override_remaining_seconds,
             "override_expires_at": _iso(intent.override_expires_at),
             "seconds_since_transition": intent.seconds_since_transition,
