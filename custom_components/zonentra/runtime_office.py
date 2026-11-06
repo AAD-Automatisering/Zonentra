@@ -8,6 +8,7 @@ from homeassistant.util import dt as dt_util
 from .bookings import Booking, BookingPlan, ThermalRates, outdoor_band, plan_booking
 from .demand import comfort_limits
 from .observations import max_age_for, read
+from .presence import read_presence
 
 ARRIVAL_GRACE = timedelta(minutes=15)
 TRANSITION_GRACE = timedelta(seconds=30)
@@ -23,6 +24,38 @@ class OfficePlan(BookingPlan):
 
 
 class OfficeRuntimeMixin:
+    def _update_room_controller_use(self, transitions, sources):
+        """Keep observed manual use until switch-off/arming, across closing time.
+
+        A running unit at startup, an automation or our own command is no proof
+        of manual use. Without opening hours the timed override policy remains.
+        """
+        settings = self.building.settings
+        presence = read_presence(
+            settings.presence_entity, sources.get(settings.presence_entity)
+        )
+        enabled = bool(
+            settings.office_schedule_entity
+            and settings.presence_entity
+            and settings.manual_override_enabled
+        )
+        for item in self.building.equipment:
+            if item.kind != "hvac":
+                continue
+            transition = transitions.get(item.id)
+            thermostat = self.thermostat(item.zone_id)
+            allowed = (
+                enabled
+                and thermostat.hvac_mode != "off"
+                and thermostat.preset == "comfort"
+            )
+            if not allowed or presence == "absent" or transition == "manual_off":
+                if item.id in self.room_controller_use:
+                    self.room_controller_use.discard(item.id)
+                    self.overrides.pop(item.id, None)
+            elif transition == "manual_on" and presence == "present":
+                self.room_controller_use.add(item.id)
+
     def _office_occupancy(self, zone, occupancy, sources, now):
         entity = self.building.settings.office_schedule_entity
         previous = self.office_plans.get(zone.id)
@@ -95,6 +128,16 @@ class OfficeRuntimeMixin:
             self._office_checks.append(plan.next_check)
         if plan.active:
             return replace(occupancy, mode="comfort", reason=f"office_{plan.status}")
+        if entity and self.building.settings.presence_entity:
+            if occupancy.presence != "absent" and any(
+                item.id in self.room_controller_use
+                for item in self.building.equipment
+                if item.kind == "hvac" and item.zone_id == zone.id
+            ):
+                return replace(occupancy, mode="comfort", reason="room_controller_use")
+            # Bookings and room motion retain their own occupancy evidence.
+            if plan.status != "open" and occupancy.reason in ("present", "default"):
+                return replace(occupancy, mode="away", reason="outside_office_hours")
         return occupancy
 
     def _office_workday(self, sources, now):

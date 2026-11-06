@@ -764,7 +764,19 @@ Zonder bevestigde opening stopt deze voorbereiding daarna. Aaneengesloten
 blokken die `on` blijven starten geen nieuwe marge.
 
 Na aankomst of afloop van de marge geldt de normale aanwezigheid/bewegingsregeling;
-ook buiten openingstijden blijft werkelijke aanwezigheid werken. Het schema verandert
+bij een gekoppelde gebouwaanwezigheid geeft gebouwpresentie alleen met planstatus
+`open` gebouwbreed comfort. Buiten die uren en op niet-werkdagen wordt de terugval
+`present`/`default` vervangen door afwezig met reden `outside_office_hours`.
+Lokale beweging en agenda-afspraken behouden hun eigen bewijs van gebruik.
+Een waargenomen `manual_on` bij gebouwstatus present autoriseert alleen de
+betreffende ruimte (`room_controller_use`). De bijbehorende `ManualOverride` heeft
+geen eindtijd; een deadline/remaining van null betekent hier een actieve overname
+zonder timer. Handmatig uit, gebouw afwezig, thermostaat-uit, Eco/Afwezig of het
+verwijderen van schema/aanwezigheid/handmatige overname beëindigt die autorisatie.
+De autorisatie blijft over sluiting en configuratieherladen bestaan, maar niet
+over een HA-herstart. Automatiseringen, eigen opdrachten en initiële states
+starten haar nooit. Zonder gekoppeld schema en aanwezigheid blijft de bestaande
+getimede overname gelden. Het schema verandert
 nooit gebouwpresentie. Onbekende, herstelde of onbruikbare schemabronnen vragen geen
 voorbereiding. Een verplaatste/verwijderde opening annuleert de vorige voorbereiding.
 Expliciete Eco/Afwezig, thermostaat-uit, uitgeschakelde regeling en groepsblokkades

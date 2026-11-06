@@ -49,7 +49,12 @@ from .observations import (
     max_age_for,
     read,
 )
-from .override import CommandTracker, classify_transition, update_override
+from .override import (
+    CommandTracker,
+    ManualOverride,
+    classify_transition,
+    update_override,
+)
 from .presence import MotionMemory, Occupancy, motion_state, occupancy, read_presence
 from .rain import RainMemory, RainProtection
 from .roomstate import (
@@ -225,6 +230,7 @@ class BuildingRuntime(
         self.thermal_store = None
         # Coordination and manual overrides survive reloads, not HA restarts.
         self.overrides = {}
+        self.room_controller_use: set[str] = set()
         self.last_transitions = {}
         self.coordination_memories = {}
         self.coordinations = {}
@@ -295,6 +301,7 @@ class BuildingRuntime(
             now,
             self.building.settings.outdoor_max_age_seconds,
         )
+        self._update_room_controller_use(transitions, sources)
         self._occupancy(sources, now)
         if self.active_capable:
             self._sync_zone_limits()
@@ -477,7 +484,11 @@ class BuildingRuntime(
             if deadline := self.group_decisions[group.id].blocked_until:
                 deadlines.append(deadline)
         # Override expiry and anti-cycling ends re-evaluate without new events.
-        deadlines.extend(override.expires_at for override in self.overrides.values())
+        deadlines.extend(
+            override.expires_at
+            for override in self.overrides.values()
+            if override.expires_at is not None
+        )
         deadlines.extend(
             intent.blocked_until
             for intent in self.unit_intents.values()
@@ -644,6 +655,7 @@ class BuildingRuntime(
         "floor_overrides",
         "coordination_memories",
         "overrides",
+        "room_controller_use",
         "last_transitions",
         "command_tracker",
         "setpoint_tracker",
@@ -1857,6 +1869,13 @@ class BuildingRuntime(
                 duration_minutes=settings.manual_override_duration_minutes,
                 regulated=self.regulated(item.zone_id),
             )
+            if item.id in self.room_controller_use:
+                override = ManualOverride(
+                    item.id,
+                    override.started_at if override else now,
+                    None,
+                    source.state if source else "unknown",
+                )
             if override:
                 overrides[item.id] = override
             if event:

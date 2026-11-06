@@ -21,13 +21,15 @@ UNAVAILABLE = (None, "unknown", "unavailable")
 class ManualOverride:
     equipment_id: str
     started_at: datetime
-    expires_at: datetime
+    expires_at: datetime | None
     mode_at_start: str
 
     def active(self, now: datetime) -> bool:
-        return now < self.expires_at
+        return self.expires_at is None or now < self.expires_at
 
-    def remaining_seconds(self, now: datetime) -> int:
+    def remaining_seconds(self, now: datetime) -> int | None:
+        if self.expires_at is None:
+            return None
         return max(0, round((self.expires_at - now).total_seconds()))
 
 

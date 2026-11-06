@@ -22,10 +22,21 @@ PRESENCE = "input_boolean.building_present"
 WORKDAY = "binary_sensor.workday"
 
 
-async def office(hass, *, start=45, temperature="21", workday=None, **zone_fields):
+async def office(
+    hass,
+    *,
+    start=45,
+    temperature="21",
+    workday=None,
+    presence_entity=PRESENCE,
+    **zone_fields,
+):
     opening = dt_util.utcnow() + timedelta(minutes=start)
     hass.states.async_set(SCHEDULE, "off", {"next_event": opening})
-    hass.states.async_set(PRESENCE, "off")
+    hass.states.async_set(
+        presence_entity,
+        "armed_away" if presence_entity.startswith("alarm_control_panel.") else "off",
+    )
     if workday is not None:
         hass.states.async_set(WORKDAY, workday)
     hass.states.async_set("sensor.west_temperature", temperature, CELSIUS)
@@ -46,7 +57,7 @@ async def office(hass, *, start=45, temperature="21", workday=None, **zone_field
         flow["flow_id"],
         {
             "office_schedule_entity": SCHEDULE,
-            "presence_entity": PRESENCE,
+            "presence_entity": presence_entity,
             **({"workday_entity": WORKDAY} if workday is not None else {}),
         },
     )
@@ -191,11 +202,11 @@ async def test_open_office_at_startup_does_not_invent_arrival(hass):
     assert central.runtime_data.zone_bands["west"][0] == "away"
 
 
-async def test_actual_presence_outside_hours_keeps_comfort(hass):
+async def test_building_presence_outside_hours_does_not_heat_every_room(hass):
     central, _, _ = await office(hass, start=300)
     hass.states.async_set(PRESENCE, "on")
     await hass.async_block_till_done()
-    assert central.runtime_data.zone_bands["west"][0] == "comfort"
+    assert central.runtime_data.zone_bands["west"][0] == "away"
 
 
 async def test_diagnostics_explain_plan_and_redact_schedule(hass):
@@ -344,9 +355,7 @@ async def test_workday_sensor_is_saved_followed_and_can_be_removed(hass):
         (None, {}),
     ],
 )
-async def test_unusable_workday_does_not_prepare_but_presence_still_works(
-    hass, state, attributes
-):
+async def test_unusable_workday_requires_local_use(hass, state, attributes):
     central, _, _ = await office(hass, start=20, workday="on")
     assert central.runtime_data.office_plans["west"].active
     if state is None:
@@ -358,10 +367,10 @@ async def test_unusable_workday_does_not_prepare_but_presence_still_works(
     assert central.runtime_data.zone_bands["west"][0] == "away"
     hass.states.async_set(PRESENCE, "on")
     await hass.async_block_till_done()
-    assert central.runtime_data.zone_bands["west"][0] == "comfort"
+    assert central.runtime_data.zone_bands["west"][0] == "away"
 
 
-async def test_holiday_cancels_arrival_grace_and_keeps_presence(hass, freezer):
+async def test_holiday_cancels_arrival_grace_and_requires_local_use(hass, freezer):
     central, _, opening = await office(hass, start=20, workday="on")
     await later(hass, freezer, minutes=20)
     hass.states.async_set(SCHEDULE, "on", {"next_event": opening + timedelta(hours=8)})
@@ -373,7 +382,7 @@ async def test_holiday_cancels_arrival_grace_and_keeps_presence(hass, freezer):
     assert central.runtime_data.zone_bands["west"][0] == "away"
     hass.states.async_set(PRESENCE, "on")
     await hass.async_block_till_done()
-    assert central.runtime_data.zone_bands["west"][0] == "comfort"
+    assert central.runtime_data.zone_bands["west"][0] == "away"
 
 
 async def test_holiday_does_not_block_calendar_preparation(hass):
@@ -430,3 +439,120 @@ async def test_workday_entity_is_redacted_from_diagnostics(hass):
         exported = json.dumps(await async_get_config_entry_diagnostics(hass, entry))
         assert WORKDAY not in exported
         assert "not_workday" in exported
+
+
+@pytest.mark.parametrize("workday", [None, "off"])
+async def test_disarming_outside_hours_only_allows_manually_selected_room(
+    hass, freezer, workday
+):
+    central, _, _ = await office(hass, start=240, workday=workday)
+    hass.states.async_set("sensor.east_temperature", "21", CELSIUS)
+    hass.states.async_set("climate.east_ac", "off")
+    await add_zone(hass, zone_options("east", "climate.east_ac", group_id=None))
+    runtime = central.runtime_data
+    hass.states.async_set(PRESENCE, "on")
+    await hass.async_block_till_done()
+    assert runtime.zone_bands["west"] == ("away", "outside_office_hours")
+    assert runtime.zone_bands["east"][0] == "away"
+
+    hass.states.async_set("climate.west_ac", "heat", {"temperature": 22})
+    await hass.async_block_till_done()
+    assert runtime.zone_bands["west"] == ("comfort", "room_controller_use")
+    assert runtime.zone_bands["east"][0] == "away"
+    assert runtime.overrides["hvac_west_ac"].expires_at is None
+    await later(hass, freezer, minutes=90)
+    assert runtime.overrides["hvac_west_ac"].active(dt_util.utcnow())
+    assert runtime.overrides["hvac_west_ac"].remaining_seconds(dt_util.utcnow()) is None
+    assert await hass.config_entries.async_reload(central.entry_id)
+    await hass.async_block_till_done()
+    runtime = central.runtime_data
+    assert runtime.zone_bands["west"] == ("comfort", "room_controller_use")
+
+    hass.states.async_set(PRESENCE, "off")
+    await hass.async_block_till_done()
+    assert not runtime.room_controller_use
+    assert "hvac_west_ac" not in runtime.overrides
+    assert runtime.zone_bands["west"][0] == "away"
+    # Disarming again must not revive a still-running unit's old authorization.
+    hass.states.async_set(PRESENCE, "on")
+    await hass.async_block_till_done()
+    assert runtime.zone_bands["west"][0] == "away"
+
+
+async def test_room_controller_use_continues_after_closing_until_manual_off(
+    hass, freezer
+):
+    central, _, opening = await office(hass, start=240)
+    runtime = central.runtime_data
+    hass.states.async_set(PRESENCE, "on")
+    hass.states.async_set(SCHEDULE, "on", {"next_event": opening})
+    await hass.async_block_till_done()
+    assert runtime.zone_bands["west"][0] == "comfort"
+    hass.states.async_set("climate.west_ac", "heat", {"temperature": 22})
+    await hass.async_block_till_done()
+    hass.states.async_set(SCHEDULE, "off", {"next_event": opening + timedelta(days=1)})
+    await hass.async_block_till_done()
+    await later(hass, freezer, hours=2)
+    assert runtime.zone_bands["west"] == ("comfort", "room_controller_use")
+    hass.states.async_set("climate.west_ac", "off", {"temperature": 22})
+    await hass.async_block_till_done()
+    assert not runtime.room_controller_use
+    assert runtime.zone_bands["west"][0] == "away"
+
+
+async def test_automation_and_startup_do_not_authorize_room_use(hass):
+    from homeassistant.core import Context
+
+    central, _, _ = await office(hass, start=240)
+    runtime = central.runtime_data
+    hass.states.async_set(PRESENCE, "on")
+    hass.states.async_set(
+        "climate.west_ac", "heat", context=Context(parent_id="automation")
+    )
+    await hass.async_block_till_done()
+    assert not runtime.room_controller_use
+    assert runtime.zone_bands["west"][0] == "away"
+    runtime.refresh()
+    assert not runtime.room_controller_use
+
+
+async def test_real_alarm_releases_manual_hold_and_sends_stop(hass, freezer):
+    alarm = "alarm_control_panel.office"
+    mocks = await mock_climate(hass)
+    central, _, _ = await office(hass, start=300, presence_entity=alarm)
+    runtime = central.runtime_data
+    runtime.set_thermostat("west", regulation=True)
+    await hass.async_block_till_done()
+    hass.states.async_set(alarm, "disarmed")
+    await hass.async_block_till_done()
+    clear(mocks)
+    assert runtime.zone_bands["west"][0] == "away"
+    assert not mocks["set_hvac_mode"]
+    hass.states.async_set("climate.west_ac", "heat", {"temperature": 22})
+    await hass.async_block_till_done()
+    await later(hass, freezer, minutes=90)
+    assert runtime.overrides["hvac_west_ac"].active(dt_util.utcnow())
+    clear(mocks)
+    hass.states.async_set(alarm, "armed_away")
+    await hass.async_block_till_done()
+    assert not runtime.room_controller_use
+    assert "hvac_west_ac" not in runtime.overrides
+    assert any(
+        call.data["entity_id"] == "climate.west_ac" for call in mocks["turn_off"]
+    )
+
+
+@pytest.mark.parametrize(
+    "changes", [{"hvac_mode": "off"}, {"preset": "eco"}, {"preset": "away"}]
+)
+async def test_explicit_thermostat_choice_ends_room_controller_use(hass, changes):
+    central, _, _ = await office(hass, start=300)
+    runtime = central.runtime_data
+    hass.states.async_set(PRESENCE, "on")
+    hass.states.async_set("climate.west_ac", "heat")
+    await hass.async_block_till_done()
+    assert runtime.room_controller_use
+    runtime.set_thermostat("west", **changes)
+    await hass.async_block_till_done()
+    assert not runtime.room_controller_use
+    assert "hvac_west_ac" not in runtime.overrides

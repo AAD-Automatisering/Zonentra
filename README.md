@@ -209,8 +209,23 @@ Het centrale openingstijdenschema geldt voor alle ruimtes zonder agenda; er is
 geen instelling per ruimte voor het schema. De voorbereiding gebruikt temperatuurverschil,
 buitentemperatuur en geleerde opwarm-/afkoeltempo's. Het schema meldt geen aanwezigheid.
 Na voorbereiding geldt bij opening maximaal 15 minuten aankomstmarge zolang het
-gebouw afwezig is. Daarna bepalen aanwezigheid en beweging weer de temperatuur;
-ook buiten openingstijden kan werkelijke aanwezigheid comfort geven. Bij een
+gebouw afwezig is. Met een gekoppelde gebouwaanwezigheid geeft alarm uit alleen
+binnen de openingstijden automatisch comfort aan ruimtes zonder bewegingssensor.
+Buiten openingstijden en op niet-werkdagen blijven die ruimtes op afwezig, behalve
+tijdens geplande voorbereiding of een afspraak. Lokale bewegingsdetectie blijft werken.
+
+Schakelt iemand bij aanwezige gebouwstatus een airco zelf in via de roomcontroller,
+dan blijft die handmatige bediening gelden tot handmatig uitschakelen of het alarm
+weer aangaat, ook na sluitingstijd en voorbij de gewone overnameduur. Dit vereist
+het openingsschema, gebouwaanwezigheid en ingeschakelde handmatige overname.
+Alleen de betreffende ruimte krijgt comfort. Automatiseringen, Zonentra-opdrachten
+en een al draaiende airco bij opstart tellen niet als handmatig inschakelen.
+Thermostaat-uit en expliciet Eco/Afwezig beëindigen deze handmatige bediening;
+raambeveiliging en groepsbeveiligingen blijven gelden. Configuratieherladen bewaart
+de bediening; een volledige Home Assistant-herstart wist haar, zoals andere
+handmatige overnames. Zonder openingsschema blijft het bestaande gedrag gelden.
+
+Bij een
 onbruikbaar schema wordt geen voorbereiding gevraagd. Eco/Afwezig en uitgeschakelde
 regeling blijven leidend. De sensor **Klimaatvraag** toont status en starttijd.
 
