@@ -828,3 +828,93 @@ async def test_explicit_user_setpoint_still_temporarily_pauses_room_controller_u
     assert equipment in runtime.room_controller_use
     assert equipment not in runtime.overrides
     assert runtime.setpoint_plans[equipment].setpoint is not None
+
+
+async def test_normal_workday_use_continues_after_closing_until_alarm_is_armed(
+    hass, freezer
+):
+    mocks = await mock_climate(hass)
+    central, _, opening = await office(
+        hass, start=300, workday="on", native_regulation=True
+    )
+    runtime = central.runtime_data
+    runtime.set_thermostat("west", regulation=True)
+    await later(hass, freezer, minutes=4)
+    hass.states.async_set(PRESENCE, "on")
+    hass.states.async_set(SCHEDULE, "on", {"next_event": opening})
+    await hass.async_block_till_done()
+    assert "west" in runtime.office_use
+    hass.states.async_set(
+        "climate.west_ac", "heat", {"temperature": 22, "hvac_action": "heating"}
+    )
+    hass.states.async_set("sensor.west_temperature", "22.4", CELSIUS)
+    await hass.async_block_till_done()
+    clear(mocks)
+    hass.states.async_set(SCHEDULE, "off", {"next_event": opening + timedelta(days=3)})
+    await hass.async_block_till_done()
+    assert runtime.zone_bands["west"] == ("comfort", "office_continued_use")
+    assert not runtime.room_controller_use
+    assert not runtime.overrides
+    assert runtime.unit_intents["hvac_west_ac"].reason == "native_regulation"
+    assert not mocks["turn_off"]
+    assert await hass.config_entries.async_reload(central.entry_id)
+    await hass.async_block_till_done()
+    runtime = central.runtime_data
+    assert runtime.zone_bands["west"] == ("comfort", "office_continued_use")
+    hass.states.async_set(PRESENCE, "off")
+    await hass.async_block_till_done()
+    assert not runtime.office_use
+    assert runtime.zone_bands["west"][0] == "away"
+    # A second visit after hours must not revive the preceding office day.
+    hass.states.async_set(PRESENCE, "on")
+    await hass.async_block_till_done()
+    assert runtime.zone_bands["west"][0] == "away"
+
+
+async def test_closing_without_actual_arrival_does_not_continue_preparation(hass):
+    central, _, opening = await office(hass, start=20)
+    runtime = central.runtime_data
+    assert runtime.office_plans["west"].active
+    hass.states.async_set(SCHEDULE, "on", {"next_event": opening})
+    await hass.async_block_till_done()
+    hass.states.async_set(SCHEDULE, "off", {"next_event": opening + timedelta(days=3)})
+    await hass.async_block_till_done()
+    hass.states.async_set(PRESENCE, "on")
+    await hass.async_block_till_done()
+    assert not runtime.office_use
+    assert runtime.zone_bands["west"][0] == "away"
+
+
+async def test_manual_off_cancels_continued_office_use(hass, freezer):
+    central, _, opening = await office(hass, start=300)
+    runtime = central.runtime_data
+    hass.states.async_set(PRESENCE, "on")
+    hass.states.async_set(SCHEDULE, "on", {"next_event": opening})
+    await hass.async_block_till_done()
+    runtime.command_tracker.register("climate.west_ac", "heat", dt_util.utcnow())
+    hass.states.async_set("climate.west_ac", "heat", {"temperature": 22})
+    await hass.async_block_till_done()
+    assert "west" in runtime.office_use
+    hass.states.async_set("climate.west_ac", "off", {"temperature": 22})
+    await hass.async_block_till_done()
+    assert "west" not in runtime.office_use
+    assert "west" in runtime.office_use_suppressed
+    hass.states.async_set(SCHEDULE, "off", {"next_event": opening + timedelta(days=3)})
+    await hass.async_block_till_done()
+    await later(hass, freezer, minutes=45)
+    assert runtime.zone_bands["west"][0] == "away"
+
+
+async def test_continued_office_use_ends_when_thermostat_is_turned_off(hass):
+    central, _, opening = await office(hass, start=300)
+    runtime = central.runtime_data
+    hass.states.async_set(PRESENCE, "on")
+    hass.states.async_set(SCHEDULE, "on", {"next_event": opening})
+    await hass.async_block_till_done()
+    hass.states.async_set(SCHEDULE, "off", {"next_event": opening + timedelta(days=3)})
+    await hass.async_block_till_done()
+    assert "west" in runtime.office_use
+    runtime.set_thermostat("west", hvac_mode="off")
+    assert not runtime.office_use
+    runtime.set_thermostat("west", hvac_mode="heat_cool")
+    assert runtime.zone_bands["west"][0] == "away"

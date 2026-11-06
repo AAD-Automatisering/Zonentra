@@ -218,6 +218,8 @@ class BuildingRuntime(
         self.booking_errors: dict = {}
         self.booking_plans: dict = {}
         self.office_plans: dict = {}
+        self.office_use: set[str] = set()
+        self.office_use_suppressed: set[str] = set()
         self._office_checks: list = []
         self.booking_results: dict = {}
         self.booking_interrupted: dict = {}
@@ -720,6 +722,12 @@ class BuildingRuntime(
             and self.building.settings.workday_entity
             == previous.building.settings.workday_entity
         ):
+            if (
+                self.building.settings.presence_entity
+                == previous.building.settings.presence_entity
+            ):
+                self.office_use = set(previous.office_use)
+                self.office_use_suppressed = set(previous.office_use_suppressed)
             self.office_plans = {
                 zone.id: previous.office_plans[zone.id]
                 for zone in self.building.zones

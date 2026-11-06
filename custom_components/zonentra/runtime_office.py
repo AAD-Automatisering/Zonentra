@@ -34,6 +34,36 @@ class OfficeRuntimeMixin:
         presence = read_presence(
             settings.presence_entity, sources.get(settings.presence_entity)
         )
+        # Normal office use must outlive closing time while the same building
+        # visit continues. A new disarm outside hours never creates that evidence.
+        if (
+            not settings.office_schedule_entity
+            or not settings.presence_entity
+            or presence == "absent"
+        ):
+            self.office_use.clear()
+            self.office_use_suppressed.clear()
+        else:
+            allowed_zones = {
+                zone.id
+                for zone in self.building.zones
+                if not zone.calendar_entity
+                and self.thermostat(zone.id).preset == "comfort"
+                and self.thermostat(zone.id).hvac_mode != "off"
+            }
+            self.office_use.intersection_update(allowed_zones)
+            self.office_use_suppressed.intersection_update(allowed_zones)
+            for item in self.building.equipment:
+                if item.kind != "hvac":
+                    continue
+                if (
+                    transitions.get(item.id) == "manual_off"
+                    and item.zone_id in self.office_use
+                ):
+                    self.office_use.discard(item.zone_id)
+                    self.office_use_suppressed.add(item.zone_id)
+                elif transitions.get(item.id) == "manual_on":
+                    self.office_use_suppressed.discard(item.zone_id)
         selected = settings.workday_presence_zone_id
         self.workday_presence_suppressed.intersection_update({selected})
         if presence == "absent":
@@ -147,6 +177,18 @@ class OfficeRuntimeMixin:
                         end=next_event,
                         next_check=min(next_event, previous.start + ARRIVAL_GRACE),
                     )
+        if (
+            entity
+            and self.building.settings.presence_entity
+            and plan.status == "open"
+            and not zone.calendar_entity
+            and occupancy.presence == "present"
+            and occupancy.mode == "comfort"
+            and self.thermostat(zone.id).preset == "comfort"
+            and self.thermostat(zone.id).hvac_mode != "off"
+            and zone.id not in self.office_use_suppressed
+        ):
+            self.office_use.add(zone.id)
         self.office_plans[zone.id] = plan
         if plan.next_check:
             self._office_checks.append(plan.next_check)
@@ -179,6 +221,13 @@ class OfficeRuntimeMixin:
                     )
                 )
                 return replace(occupancy, mode="comfort", reason="workday_presence")
+            if (
+                plan.status != "open"
+                and zone.id in self.office_use
+                and occupancy.presence == "present"
+                and occupancy.reason in ("present", "default")
+            ):
+                return replace(occupancy, mode="comfort", reason="office_continued_use")
             # Bookings and room motion retain their own occupancy evidence.
             if plan.status != "open" and occupancy.reason in ("present", "default"):
                 return replace(occupancy, mode="away", reason="outside_office_hours")

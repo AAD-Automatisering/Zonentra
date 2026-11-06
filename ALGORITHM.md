@@ -1047,3 +1047,30 @@ commando's en screen-events wijzigen dit record niet; latere attribuutupdates
 wissen het niet. De Regelactie-sensor en centrale/ruimtediagnostiek exporteren
 het naast de ruimteautorisatie en de start van een eventuele echte regelpauze.
 Er worden geen gebruikers-ID's of ruwe temperatuurwijzigingen opgeslagen.
+
+
+## Werkdaggebruik voortzetten na sluiting
+
+`office_use` bewaart per niet-agendaruimte of er tijdens een betrouwbaar geopend
+schema werkelijke gebouwpresentie en comfortbezetting is waargenomen. Preset moet
+comfort zijn en de thermostaat mag niet uit staan. Voorbereiding/arrival grace
+zonder daadwerkelijke aankomst levert geen bewijs van ruimtegebruik op.
+
+Buiten openingstijden blijft zo'n ruimte bij betrouwbare present-status op comfort
+met reden `office_continued_use`. Dit vervangt uitsluitend de gewone sensorloze
+terugval `present`/`default`, niet de bestaande bewegings- of agendalogica. Het
+creëert geen handmatige apparaat-overname en verandert geen minimumtijden,
+setpointcorrectie, ventilatorregeling of native-regulation-voorwaarden.
+
+Bewezen gebouwafwezigheid wist `office_use` en `office_use_suppressed`. Handmatig
+uitschakelen wist het betreffende ruimtegebruik en onderdrukt opnieuw vastleggen
+tijdens dezelfde gebouwbezetting; handmatig inschakelen heft die onderdrukking op.
+Thermostaat-uit, Eco/Afwezig, verwijderen van een ruimte of ontbrekende schema- of
+aanwezigheidsconfiguratie wissen bijbehorende gebruiksstatus eveneens.
+
+Configuratieherladen bewaart de status alleen bij dezelfde schema-, werkdag- en
+aanwezigheidsbron. Een volledige HA-herstart begint zonder bewijs van eerder
+werkdaggebruik; een disarmed alarm na sluitingstijd wordt niet als eerdere
+werkdagaanwezigheid aangenomen. Daardoor activeert een nieuwe vroege/weekendvisit
+nooit stilzwijgend het hele gebouw. Een expliciete roomcontroller-start en de
+gekozen werkdagruimte blijven onafhankelijke bronnen van comfortvraag.

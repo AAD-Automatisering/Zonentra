@@ -211,7 +211,14 @@ buitentemperatuur en geleerde opwarm-/afkoeltempo's. Het schema meldt geen aanwe
 Na voorbereiding geldt bij opening maximaal 15 minuten aankomstmarge zolang het
 gebouw afwezig is. Met een gekoppelde gebouwaanwezigheid geeft alarm uit alleen
 binnen de openingstijden automatisch comfort aan ruimtes zonder bewegingssensor.
-Buiten openingstijden en op niet-werkdagen blijven die ruimtes op afwezig, behalve
+Ruimtes die tijdens openingstijden bij aanwezige gebouwstatus op comfort stonden,
+blijven na sluiting op comfort tot het alarm weer aangaat (`office_continued_use`).
+Deze voortzetting houdt geen airco geforceerd aan: de gewone temperatuurregeling,
+minimale draaitijden en beveiligingen blijven werken. Handmatig uitschakelen
+beëindigt de voortzetting voor die ruimte.
+
+Een nieuwe aankomst buiten openingstijden of op niet-werkdagen activeert die
+voortzetting niet. Zonder eerder waargenomen werkdaggebruik blijven ruimtes op afwezig, behalve
 tijdens geplande voorbereiding of een afspraak. Lokale bewegingsdetectie blijft werken.
 
 Schakelt iemand bij aanwezige gebouwstatus een airco zelf in via de roomcontroller,
@@ -381,3 +388,10 @@ De detectie blijft bij configuratieherladen bewaard, maar begint na een volledig
 HA-herstart opnieuw. **Setpointstatus** verklaart waarom **Geregeld setpoint**
 eventueel geen waarde toont. Screenbediening heeft een afzonderlijke overname
 en maakt geen handmatige airco-overname aan.
+
+Voortgezet werkdaggebruik blijft bij configuratieherladen behouden zolang schema,
+werkdagbron en aanwezigheidsbron gelijk blijven. Een volledige Home Assistant-herstart
+wist deze gebruiksstatus. Na zo'n herstart buiten openingstijden is niet bekend
+welke ruimtes vóór sluiting in gebruik waren; schakel de gewenste ruimte dan
+via de roomcontroller in. Een nieuwe start buiten openingstijden wordt nooit
+achteraf als gewone werkdagaanwezigheid geïnterpreteerd.
