@@ -456,6 +456,7 @@ def plan_setpoint(
     min_temp: float | None = None,
     max_temp: float | None = None,
     gain: float = 1.0,
+    heating_extra: float = 0.0,
 ) -> SetpointPlan:
     """Self-regulating setpoint for a running unit, steered on the room sensor.
 
@@ -463,7 +464,8 @@ def plan_setpoint(
     (heating limit + hysteresis, or cooling limit - hysteresis). The unit's
     own sensor sits in the unit, so the room error is added on top (default gain 1;
     the optional native trial uses gain 0.25),
-    bounded by ``max_offset``: a cold room asks the unit for more, a room that
+    plus optional sustained-heating assistance, all bounded by ``max_offset``:
+    a cold room asks the unit for more, a room that
     is already warm enough for less. Changes are rounded to the unit's step
     and sent at most once per ``interval_seconds``.
 
@@ -481,7 +483,10 @@ def plan_setpoint(
     step = step if step and step > 0 else 0.5
     if mode == "heat":
         base = heating_limit + hysteresis
-        offset = max(-max_offset, min(max_offset, gain * (base - room_temperature)))
+        offset = max(
+            -max_offset,
+            min(max_offset, gain * (base - room_temperature) + max(0.0, heating_extra)),
+        )
         raw = base + offset
     else:
         base = cooling_limit - hysteresis

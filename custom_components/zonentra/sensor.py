@@ -712,6 +712,15 @@ class RegulatedSetpointSensor(ZoneStateSensor):
             "status": plan.status if plan else "no_active_setpoint",
             "base": plan.base if plan else None,
             "offset": plan.offset if plan else None,
+            "heating_correction": [
+                {
+                    "status": correction.status,
+                    "extra_c": correction.extra,
+                    "warming_c_per_hour": correction.trend,
+                }
+                for item in (self._units() if self.runtime else ())
+                if (correction := self.runtime.heating_corrections.get(item.id))
+            ],
             "room_regulation": (
                 self.runtime.regulated(self._zone.id) if self.runtime else None
             ),

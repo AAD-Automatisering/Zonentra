@@ -40,6 +40,7 @@ from .forecast import (
     demand_margins,
     summarize_forecast,
 )
+from .heating_correction import MAX_REPORT_GAP, heating_correction
 from .indoor import compare_modes, observe_group, observe_unit
 from .models import Building
 from .observations import (
@@ -170,6 +171,8 @@ class BuildingRuntime(
         self.comfort: dict[str, tuple[Reading, Reading]] = {}
         self.room_controls: dict[str, RoomUnitControl] = {}
         self.setpoint_plans: dict[str, SetpointPlan] = {}
+        self.heating_corrections: dict = {}
+        self._heating_correction_checks: list = []
         self.setpoint_sent: dict = {}
         self.setpoint_tracker = CommandTracker()
         self._setpoint_checks: list = []
@@ -452,6 +455,7 @@ class BuildingRuntime(
             )
         self._preview_auto_fans()
         self._plan(transitions, sources, now)
+        self._update_heating_corrections(now)
         if self.active_capable:
             self._floor_control(now)
             self._control(sources, now)
@@ -503,6 +507,7 @@ class BuildingRuntime(
         deadlines.extend(self._booking_checks)
         deadlines.extend(self._office_checks)
         deadlines.extend(self._motion_checks)
+        deadlines.extend(self._heating_correction_checks)
         deadlines.extend(self._setpoint_checks)
         deadlines.extend(self._window_checks)
         deadlines.extend(self._manual_checks)
@@ -652,6 +657,7 @@ class BuildingRuntime(
         "zone_demands",
         "hvac_demands",
         "heating_watches",
+        "heating_corrections",
         "floor_overrides",
         "coordination_memories",
         "overrides",
@@ -1354,6 +1360,64 @@ class BuildingRuntime(
                 holds.add(item.id)
         return frozenset(holds)
 
+    def _update_heating_corrections(self, now):
+        """Observe each unit only while ordinary comfort heating is authorized."""
+        corrections, checks = {}, []
+        zones = {zone.id: zone for zone in self.building.zones}
+        for item in self.building.equipment:
+            if item.kind != "hvac":
+                continue
+            zone = zones[item.zone_id]
+            unit = self.indoor_units.get(item.id)
+            snapshot = self.zone_snapshots[item.zone_id]
+            thermostat = self.thermostat(item.zone_id)
+            override = self.overrides.get(item.id)
+            intent = self.unit_intents.get(item.id)
+            eligible = (
+                self.active_capable
+                and self.regulated(item.zone_id)
+                and thermostat.hvac_mode in ("heat", "heat_cool")
+                and self.zone_bands[item.zone_id][0] == "comfort"
+                and not self.native_regulation(zone)
+                and self.windows.get(item.zone_id)
+                in ("closed", "not_configured", "bypass")
+                and snapshot.temperature.quality == "valid"
+                and snapshot.heating_limit.quality == "valid"
+                and unit is not None
+                and unit.available
+                and unit.selected_mode == "heat"
+                and unit.target_temperature is not None
+                and unit.reported_action == "heating"
+                and not (override and override.active(now))
+                and not self._group_block(item.group_id)
+                and item.group_id not in self.group_switches
+                and intent is not None
+                and intent.action == "hold"
+                and intent.zone_demand == "heating_demand"
+            )
+            correction = heating_correction(
+                self.heating_corrections.get(item.id),
+                now,
+                eligible=eligible,
+                temperature=snapshot.temperature.value,
+                reported_at=snapshot.temperature.reported_at,
+                target=snapshot.heating_limit.value,
+                context=(
+                    item.entity_id,
+                    zone.temperature_entity,
+                    zone.hysteresis,
+                    self.building.settings.setpoint_max_offset,
+                ),
+                max_extra=min(1.0, self.building.settings.setpoint_max_offset),
+            )
+            corrections[item.id] = correction
+            if correction.last_reported_at:
+                deadline = correction.last_reported_at + MAX_REPORT_GAP
+                if deadline > now:
+                    checks.append(deadline)
+        self.heating_corrections = corrections
+        self._heating_correction_checks = checks
+
     def _setpoint_plan(self, item, zone, settings, now) -> SetpointPlan:
         unit = self.indoor_units.get(item.id)
         override = self.overrides.get(item.id)
@@ -1388,6 +1452,9 @@ class BuildingRuntime(
             else settings.setpoint_max_offset,
             interval_seconds=settings.setpoint_interval_seconds,
             gain=NATIVE_GAIN if self.native_regulation(zone) else 1.0,
+            heating_extra=self.heating_corrections[item.id].extra
+            if item.id in self.heating_corrections
+            else 0.0,
             step=step,
             step_origin=(convert_temperature(0, step_unit) or 0)
             if step is not None and step > 0

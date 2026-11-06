@@ -18,6 +18,7 @@ def test_prefer_calculated_target_over_inactive_unit(status):
         building=SimpleNamespace(equipment=units),
         zone_demands={"west": None},
         active_capable=True,
+        heating_corrections={},
         setpoint_plans={
             "first": SetpointPlan("unit_not_running"),
             "second": SetpointPlan(status, 23, 22, 1),
@@ -34,6 +35,7 @@ def test_prefer_calculated_target_over_inactive_unit(status):
         "status": status,
         "base": 22,
         "offset": 1,
+        "heating_correction": [],
         "room_regulation": False,
     }
     runtime.setpoint_plans["second"] = SetpointPlan("manual_override")

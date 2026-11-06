@@ -976,3 +976,36 @@ zijn bestaande uitkomst meegeven; zijn profiel- en sample-resultaten blijven gel
 richting, buitentemperatuurgebied en tijdsduur, zonder de ruwe temperatuurwaarden.
 Het live leren en de betrouwbaarheid van eerder opgeslagen profielen zijn aparte
 zaken en worden daarom afzonderlijk weergegeven.
+
+
+## Begrensde aircocorrectie bij aanhoudend temperatuurtekort
+
+`heating_correction.py` bewaart per binnenunit een observatie en maximaal 1 K extra
+setpointcorrectie. Toelating vereist actieve ruimteregeling, comfort, gewone
+heat/heat_cool-regeling, een beschikbare unit in heat met expliciete actie heating,
+geldige ruimtetemperatuur en verwarmingsgrens, een gesloten/niet-geconfigureerd of
+gebypasst raam, normale hold-intentie met warmtevraag en geen handmatige overname,
+groepsblokkade of groepswissel. De native-regulation-proef is uitgesloten.
+
+Minstens 0,5 K tekort moet tijdens de waargenomen meetpunten aanhouden. De pure
+functie neemt hoogstens iedere vijf minuten een anker op en beoordeelt pas na
+45 minuten de netto stijging tussen het eerste en laatste rapport, omgerekend
+naar K/uur. Minder dan 0,2 K/uur geeft +0,5 K; iedere beoordeling begint een nieuwe
+observatie. Minstens 0,5 K/uur geeft -0,5 K indien er extra correctie was. Binnen
+0,2 K onder de verwarmingsgrens wordt maximaal iedere 15 minuten 0,5 K afgebouwd;
+bij bereikte grens is de extra correctie nul. Dit is geen capaciteitsdiagnose of
+meting van energie-efficiëntie en gebruikt de actuele korte EMA-trend niet als
+vervanging voor een volledige observatieperiode.
+
+Alleen oplopende, verse rapporttijdstippen na de start tellen. Een rapportgat van
+meer dan 20 minuten of een rapportleeftijd van 20 minuten reset de toestand. Een
+expliciete deadline bewaakt dit ook zonder nieuwe bron-events. Andere targets,
+bron-entiteiten of relevante instellingen resetten de toestand, evenals verlies
+van toelating. De bestaande setpointplanner telt de niet-negatieve extra correctie
+uitsluitend bij heat op vóór begrenzing van de totale offset; apparaatgrenzen,
+afronding, interval en serviceguards blijven gelden. Koelen wordt niet aangepast.
+
+`heating_corrections` overleeft configuratieherladen via de bestaande runtime-overdracht,
+maar geen volledige herstart. Diagnostiek en setpointsensor exporteren uitsluitend
+status, extra correctie en geaggregeerde opwarmsnelheid; geen ruwe observatiemetingen.
+De vloerdoelen en de aparte sensor voor onvoldoende opwarming veranderen niet.

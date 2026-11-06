@@ -319,3 +319,30 @@ De repository bevat de integratie, regressietests en CI. Zie
 [ALGORITHM.md](ALGORITHM.md) voor beslisregels en
 [ARCHITECTURE.md](ARCHITECTURE.md) voor de technische opbouw.
 Licentie: [MIT](LICENSE).
+
+### Extra aircocorrectie bij stagnerende opwarming
+
+Bij gewone automatische comfortverwarming beoordeelt Zonentra per airco verse
+ruimtemetingen over 45 minuten. Blijft de ruimte gedurende die observatie minstens
+0,5 °C onder de actieve verwarmingsgrens en stijgt de temperatuur minder dan
+0,2 °C per uur, dan krijgt het aircosetpoint 0,5 °C extra correctie. Iedere volgende
+verhoging vereist opnieuw 45 minuten bewijs. De extra correctie is maximaal
+1 °C; de bestaande centrale maximale setpointcorrectie geldt voor het totaal,
+met de bestaande afronding naar apparaatstappen en het bestaande wijzigingsinterval.
+
+Bij duidelijke opwarming (minstens 0,5 °C/uur over een observatieperiode) neemt de
+extra correctie een stap af. Binnen 0,2 °C onder de verwarmingsgrens bouwt zij met
+maximaal één stap per 15 minuten af; bij het bereiken van de grens vervalt zij.
+Alleen gemelde `heating` telt: idle, opstarten/ontdooien, koelen, ontbrekende
+feedback, handmatige overname, een open/onbekend raam of uitgeschakelde regeling
+wissen de observatie en correctie. Eco/Afwezig en de optionele proef met de eigen
+aircoregeling krijgen deze extra correctie niet. Een gewijzigd doel of gewijzigde
+sensor begint opnieuw. Zonder vers temperatuurrapport binnen 20 minuten vervalt
+de correctie, ook bij state-based sensoren; timerupdates gelden niet als meetbewijs.
+
+De sensor **Geregeld setpoint** en ruimtediagnostiek tonen `heating_correction`
+met status, gevraagde extra correctie (`extra_c`) en laatst beoordeelde opwarmsnelheid
+(`warming_c_per_hour`). De gevraagde extra correctie kan door de totale grens of
+de apparaatstap kleiner uitpakken. De observatie blijft bij configuratieherladen
+behouden voor dezelfde bron en instellingen; een volledige HA-herstart begint
+opnieuw. Deze functie verandert geen ventilatorstanden of vloerverwarmingsdoelen.

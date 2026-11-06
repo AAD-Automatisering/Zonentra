@@ -380,6 +380,13 @@ def _zone_diagnostics(hass, entry) -> dict:
             {
                 "equipment_id": item.id,
                 "status": control.status,
+                "heating_correction": {
+                    "status": correction.status,
+                    "extra_c": correction.extra,
+                    "warming_c_per_hour": correction.trend,
+                }
+                if (correction := runtime.heating_corrections.get(item.id))
+                else None,
                 "setpoint": {
                     **asdict(plan),
                     "next_check": _iso(plan.next_check),
