@@ -1009,3 +1009,29 @@ afronding, interval en serviceguards blijven gelden. Koelen wordt niet aangepast
 maar geen volledige herstart. Diagnostiek en setpointsensor exporteren uitsluitend
 status, extra correctie en geaggregeerde opwarmsnelheid; geen ruwe observatiemetingen.
 De vloerdoelen en de aparte sensor voor onvoldoende opwarming veranderen niet.
+
+
+## Geselecteerde ruimte bij aankomst op werkdagen
+
+`BuildingSettings.workday_presence_zone_id` is een optionele centrale ruimte-ID,
+standaard null, te kiezen bij Aanwezigheid uit de niet-agendaruimtes. Zij komt niet
+in `entity_ids` en wordt in diagnostiek geredigeerd. Een verwijzing naar een niet
+meer bestaande ruimte activeert niets.
+
+Met openingsschema en gebouwaanwezigheid krijgt uitsluitend die ruimte comfort
+met reden `workday_presence`, indien de aanwezigheid betrouwbaar present is,
+de lokale dag maandag-vrijdag is én de geconfigureerde werkdagsensor betrouwbaar
+on meldt. Zonder werkdagsensor is de uitzondering uitgeschakeld. De lokale
+weekdagcontrole sluit zaterdag/zondag ook bij een foutief on-signaal uit; de
+werkdagsensor dekt onder andere feestdagen. Een deadline op lokale middernacht
+beoordeelt de uitzondering opnieuw zonder afhankelijk te zijn van nieuwe events.
+
+Dit is een bezettingsvraag, geen handmatige apparaat-overname; de normale
+setpointcorrectie blijft werken. Bestaande voorbereiding, agenda-afspraken,
+ruimteregeling, presets en veiligheidsvoorwaarden behouden hun werking.
+`manual_off` in de geselecteerde ruimte onderdrukt alleen deze uitzondering via
+`workday_presence_suppressed` tot bewezen gebouwafwezigheid. Eigen stopopdrachten
+gelden niet als manual_off. Onderdrukking overleeft configuratieherladen, maar
+geen HA-herstart. Verwijderen/wijzigen van de gekozen ruimte wist oude
+onderdrukkingen. Handmatige roomcontroller-sessies blijven onafhankelijk en zijn
+ook in het weekend toegestaan.

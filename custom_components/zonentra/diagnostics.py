@@ -33,6 +33,7 @@ REDACT = {
     "outdoor_temperature_candidates",
     "contact_entities",
     "member_zone_ids",
+    "workday_presence_zone_id",
     *ZONE_ENTITY_FIELDS,
     *(
         field.name

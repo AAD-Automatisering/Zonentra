@@ -34,6 +34,20 @@ class OfficeRuntimeMixin:
         presence = read_presence(
             settings.presence_entity, sources.get(settings.presence_entity)
         )
+        selected = settings.workday_presence_zone_id
+        self.workday_presence_suppressed.intersection_update({selected})
+        if presence == "absent":
+            self.workday_presence_suppressed.clear()
+        elif (
+            presence == "present"
+            and selected
+            and any(
+                item.zone_id == selected and transitions.get(item.id) == "manual_off"
+                for item in self.building.equipment
+                if item.kind == "hvac"
+            )
+        ):
+            self.workday_presence_suppressed.add(selected)
         enabled = bool(
             settings.office_schedule_entity
             and settings.presence_entity
@@ -135,6 +149,26 @@ class OfficeRuntimeMixin:
                 if item.kind == "hvac" and item.zone_id == zone.id
             ):
                 return replace(occupancy, mode="comfort", reason="room_controller_use")
+            settings = self.building.settings
+            workday = sources.get(settings.workday_entity)
+            if (
+                zone.id == settings.workday_presence_zone_id
+                and not zone.calendar_entity
+                and occupancy.presence == "present"
+                and dt_util.as_local(now).weekday() < 5
+                and workday is not None
+                and workday.trustworthy
+                and workday.state == "on"
+                and zone.id not in self.workday_presence_suppressed
+            ):
+                # Presence only selects this room; ordinary regulation (including
+                # setpoint correction) remains active, without a manual override.
+                self._office_checks.append(
+                    dt_util.start_of_local_day(
+                        dt_util.as_local(now) + timedelta(days=1)
+                    )
+                )
+                return replace(occupancy, mode="comfort", reason="workday_presence")
             # Bookings and room motion retain their own occupancy evidence.
             if plan.status != "open" and occupancy.reason in ("present", "default"):
                 return replace(occupancy, mode="away", reason="outside_office_hours")

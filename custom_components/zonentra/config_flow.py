@@ -111,6 +111,7 @@ def building_fields(limits: bool = True) -> dict:
         vol.Optional("presence_entity"): entity_selector(list(PRESENCE_DOMAINS)),
         vol.Optional("office_schedule_entity"): entity_selector("schedule"),
         vol.Optional("workday_entity"): entity_selector("binary_sensor"),
+        vol.Optional("workday_presence_zone_id"): choice([{"value": "", "label": "—"}]),
         vol.Optional("eco_heating_limit"): numeric(5, 35, unit="°C"),
         vol.Optional("eco_cooling_limit"): numeric(5, 35, unit="°C"),
         vol.Optional("away_heating_limit"): numeric(5, 35, unit="°C"),
@@ -171,6 +172,7 @@ CENTRAL_SECTIONS = {
         "presence_entity",
         "office_schedule_entity",
         "workday_entity",
+        "workday_presence_zone_id",
         "motion_delay_seconds",
         "motion_off_delay_minutes",
     ),
@@ -1192,6 +1194,14 @@ class CentralOptionsFlow(ZonentraOptionsFlow):
                     return await self.async_step_init()
         values = {**building_defaults(), **current, **(user_input or {})}
         fields = section_fields(CENTRAL_SECTIONS[section], values)
+        if section == "presence":
+            options = [{"value": "", "label": "—"}]
+            options.extend(
+                {"value": zone.id, "label": zone.name}
+                for zone in self._model(self.topology).zones
+                if not zone.calendar_entity
+            )
+            fields[vol.Optional("workday_presence_zone_id")] = choice(options)
         self._central_visible_keys = {marker.schema for marker in fields}
         schema = self.add_suggested_values_to_schema(
             vol.Schema(fields),

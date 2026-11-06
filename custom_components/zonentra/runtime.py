@@ -234,6 +234,7 @@ class BuildingRuntime(
         # Coordination and manual overrides survive reloads, not HA restarts.
         self.overrides = {}
         self.room_controller_use: set[str] = set()
+        self.workday_presence_suppressed: set[str] = set()
         self.last_transitions = {}
         self.coordination_memories = {}
         self.coordinations = {}
@@ -662,6 +663,7 @@ class BuildingRuntime(
         "coordination_memories",
         "overrides",
         "room_controller_use",
+        "workday_presence_suppressed",
         "last_transitions",
         "command_tracker",
         "setpoint_tracker",

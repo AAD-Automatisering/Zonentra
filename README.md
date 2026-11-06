@@ -346,3 +346,26 @@ met status, gevraagde extra correctie (`extra_c`) en laatst beoordeelde opwarmsn
 de apparaatstap kleiner uitpakken. De observatie blijft bij configuratieherladen
 behouden voor dezelfde bron en instellingen; een volledige HA-herstart begint
 opnieuw. Deze functie verandert geen ventilatorstanden of vloerverwarmingsdoelen.
+
+### Eén ruimte automatisch bij aankomst op werkdagen
+
+Onder **Centrale configuratie → Configureren → Aanwezigheid** kun je één
+**Ruimte bij alarm uit op werkdagen** kiezen. De standaard is geen uitzondering
+(—). Kies ook het openingsschema, de bestaande alarm-/gebouwaanwezigheidsbron en
+**Werkdag-sensor voor vandaag** (offset 0). Bij aanwezige gebouwstatus krijgt alleen
+de geselecteerde ruimte automatisch comfort buiten openingstijden. De andere
+ruimtes behouden hun gewone planning. Ruimtes met een agenda volgen hun afspraken
+en zijn niet selecteerbaar voor deze uitzondering.
+
+Dit werkt uitsluitend maandag tot en met vrijdag én bij een betrouwbare aan-state
+van de werkdagsensor. Op zaterdag, zondag, feestdagen of bij ontbrekende/onbruikbare
+werkdaginformatie activeert alarm uit de uitzondering niet. Agenda-afspraken en
+bewust inschakelen via een roomcontroller blijven afzonderlijk werken. Het alarm
+uitzetten voorspelt geen aankomst: opwarmen begint pas wanneer het gebouw aanwezig is.
+
+De uitzondering vraagt comfort via de gewone ruimteregeling, zodat ook de
+setpointcorrectie blijft werken. Ruimteregeling moet ingeschakeld zijn; expliciet
+Eco/Afwezig, thermostaat-uit en beveiligingen behouden voorrang. Alarm aan beëindigt
+de uitzondering. Handmatig uitschakelen van een airco in die ruimte onderdrukt de
+uitzondering tot het gebouw opnieuw afwezig is geweest; configuratieherladen bewaart
+die keuze, een volledige HA-herstart niet. De actieve band toont `workday_presence`.

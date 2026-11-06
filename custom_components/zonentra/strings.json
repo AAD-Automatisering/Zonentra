@@ -124,11 +124,13 @@
           "motion_delay_seconds": "Motion detection delay (seconds)",
           "motion_off_delay_minutes": "Time occupied after last motion (minutes)",
           "office_schedule_entity": "Office opening hours (optional)",
-          "workday_entity": "Workday sensor for today (optional)"
+          "workday_entity": "Workday sensor for today (optional)",
+          "workday_presence_zone_id": "Room to activate on workday arrival (optional)"
         },
         "data_description": {
           "office_schedule_entity": "Select a schedule helper. Ordinary rooms prepare automatically before opening, including while absent. A maximum 15-minute arrival grace follows opening; presence and motion then determine comfort. Calendar rooms continue to follow their bookings.",
-          "workday_entity": "Separate from opening hours: on = workday, off = non-workday. Choose a sensor for today (offset 0). On non-workdays or with an unusable sensor, office preparation and arrival grace are skipped. Presence and calendar bookings still work. Without a sensor, only the schedule applies."
+          "workday_entity": "Separate from opening hours: on = workday, off = non-workday. Choose a sensor for today (offset 0). On non-workdays or with an unusable sensor, office preparation and arrival grace are skipped. Presence and calendar bookings still work. Without a sensor, only the schedule applies.",
+          "workday_presence_zone_id": "Only this room receives automatic comfort outside opening hours when the building is present. Requires an opening-hours schedule, building presence and an on-state from today’s workday sensor. Never on Saturday or Sunday. Choose — to disable. Bookings and manual control remain independent."
         },
         "submit": "Apply and return"
       },
@@ -324,7 +326,8 @@
           "screen_wind_calm_minutes": "Calm hold before shading may lower again (minutes; default 30)",
           "screen_wind_max_age_minutes": "Maximum wind weather report age (minutes; default 60)",
           "office_schedule_entity": "Office opening hours (optional)",
-          "workday_entity": "Workday sensor for today (optional)"
+          "workday_entity": "Workday sensor for today (optional)",
+          "workday_presence_zone_id": "Room to activate on workday arrival (optional)"
         },
         "data_description": {
           "office_schedule_entity": "Select a schedule helper. Ordinary rooms prepare automatically before opening, including while absent. A maximum 15-minute arrival grace follows opening; presence and motion then determine comfort. Calendar rooms continue to follow their bookings.",
@@ -333,7 +336,8 @@
           "workday_entity": "Separate from opening hours: on = workday, off = non-workday. Choose a sensor for today (offset 0). On non-workdays or with an unusable sensor, office preparation and arrival grace are skipped. Presence and calendar bookings still work. Without a sensor, only the schedule applies.",
           "screen_wind_protection": "Wind protection takes priority over manual operation. A current windy/windy-variant weather condition also activates protection when measured wind is below the configured limits.",
           "screen_wind_calm_minutes": "After a wind alarm, this period starts only when all checked wind readings are at or below 80% of their configured limits and the current weather condition is not windy/windy-variant. With limits of 40 km/h sustained wind and 50 km/h gusts, this means at most 32 and 40 km/h. Readings must stay calm for the entire period; a higher or missing reading restarts the wait.",
-          "screen_override_minutes": "Pauses normal automatic shading control after manual operation. Wind and rain protection still take priority and may raise the shading."
+          "screen_override_minutes": "Pauses normal automatic shading control after manual operation. Wind and rain protection still take priority and may raise the shading.",
+          "workday_presence_zone_id": "Only this room receives automatic comfort outside opening hours when the building is present. Requires an opening-hours schedule, building presence and an on-state from today’s workday sensor. Never on Saturday or Sunday. Choose — to disable. Bookings and manual control remain independent."
         },
         "submit": "Apply and return"
       },

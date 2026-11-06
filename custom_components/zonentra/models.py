@@ -123,6 +123,7 @@ class BuildingSettings:
     presence_entity: str | None = None
     office_schedule_entity: str | None = None
     workday_entity: str | None = None
+    workday_presence_zone_id: str | None = None
     eco_heating_limit: float = 19.0
     eco_cooling_limit: float = 26.0
     away_heating_limit: float = 16.0
@@ -296,6 +297,11 @@ def build_model(building_id: str, name: str, topology: dict[str, Any]) -> Buildi
     _entity(settings.presence_entity, PRESENCE_DOMAINS)
     _entity(settings.office_schedule_entity, ("schedule",))
     _entity(settings.workday_entity, ("binary_sensor",))
+    if settings.workday_presence_zone_id is not None and (
+        not isinstance(settings.workday_presence_zone_id, str)
+        or not settings.workday_presence_zone_id.strip()
+    ):
+        raise ValueError("invalid_parameters")
     _validate_bands(settings, settings.hysteresis)
     _range(settings.motion_delay_seconds, 0, 600)
     _range(settings.motion_off_delay_minutes, 1, 240)

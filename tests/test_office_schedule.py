@@ -556,3 +556,150 @@ async def test_explicit_thermostat_choice_ends_room_controller_use(hass, changes
     await hass.async_block_till_done()
     assert not runtime.room_controller_use
     assert "hvac_west_ac" not in runtime.overrides
+
+
+async def select_workday_room(hass, central, selected="west", workday=WORKDAY):
+    flow = await open_section(hass, central, "presence")
+    options = flow["data_schema"].schema["workday_presence_zone_id"].config["options"]
+    assert {"value": "west", "label": "West"} in options
+    flow = await hass.config_entries.options.async_configure(
+        flow["flow_id"],
+        {
+            "office_schedule_entity": SCHEDULE,
+            "presence_entity": central.options["building"]["presence_entity"],
+            "workday_presence_zone_id": selected,
+            **({"workday_entity": workday} if workday else {}),
+        },
+    )
+    await hass.config_entries.options.async_configure(
+        flow["flow_id"], {"next_step_id": "finish"}
+    )
+    await hass.async_block_till_done()
+    return central.runtime_data
+
+
+async def test_workday_arrival_only_activates_selected_room_with_normal_regulation(
+    hass,
+    freezer,
+):
+    mocks = await mock_climate(hass)
+    alarm = "alarm_control_panel.office"
+    central, _, _ = await office(hass, start=300, workday="on", presence_entity=alarm)
+    hass.states.async_set("sensor.east_temperature", "21", CELSIUS)
+    hass.states.async_set("climate.east_ac", "off")
+    await add_zone(hass, zone_options("east", "climate.east_ac", group_id=None))
+    runtime = await select_workday_room(hass, central)
+    runtime.set_thermostat("west", regulation=True)
+    await later(hass, freezer, minutes=4)
+    clear(mocks)
+    hass.states.async_set(alarm, "disarmed")
+    await hass.async_block_till_done()
+    assert runtime.zone_bands["west"] == ("comfort", "workday_presence")
+    assert runtime.zone_bands["east"] == ("away", "outside_office_hours")
+    assert not runtime.room_controller_use
+    assert not runtime.overrides
+    assert any(c.data.get("hvac_mode") == "heat" for c in mocks["set_hvac_mode"])
+    assert all(c.data["entity_id"] == "climate.west_ac" for c in mocks["set_hvac_mode"])
+    hass.states.async_set(alarm, "armed_away")
+    await hass.async_block_till_done()
+    assert runtime.zone_bands["west"][0] == "away"
+
+
+@pytest.mark.parametrize(
+    "state,attrs",
+    [
+        ("off", {}),
+        ("unknown", {}),
+        ("unavailable", {}),
+        ("on", {"restored": True}),
+        ("on", {"assumed_state": True}),
+        (None, {}),
+    ],
+)
+async def test_selected_room_requires_confirmed_workday(hass, state, attrs):
+    central, _, _ = await office(hass, start=300, workday="on")
+    runtime = await select_workday_room(hass, central)
+    if state is None:
+        hass.states.async_remove(WORKDAY)
+    else:
+        hass.states.async_set(WORKDAY, state, attrs)
+    hass.states.async_set(PRESENCE, "on")
+    await hass.async_block_till_done()
+    assert runtime.zone_bands["west"][0] == "away"
+
+
+@pytest.mark.parametrize(
+    "day", ["2026-10-24T16:00:00+00:00", "2026-10-25T16:00:00+00:00"]
+)
+async def test_weekend_never_automatically_activates_selected_room(hass, freezer, day):
+    freezer.move_to(day)
+    # Even an accidentally-on workday sensor cannot enable the weekend exception.
+    central, _, _ = await office(hass, start=300, workday="on")
+    runtime = await select_workday_room(hass, central)
+    hass.states.async_set(PRESENCE, "on")
+    await hass.async_block_till_done()
+    assert runtime.zone_bands["west"][0] == "away"
+    hass.states.async_set("climate.west_ac", "heat")
+    await hass.async_block_till_done()
+    assert runtime.zone_bands["west"] == ("comfort", "room_controller_use")
+
+
+async def test_workday_room_requires_sensor_and_can_be_cleared(hass):
+    central, _, _ = await office(hass, start=300)
+    runtime = await select_workday_room(hass, central, workday=None)
+    hass.states.async_set(PRESENCE, "on")
+    await hass.async_block_till_done()
+    assert runtime.zone_bands["west"][0] == "away"
+    hass.states.async_set(WORKDAY, "on")
+    runtime = await select_workday_room(hass, central)
+    assert runtime.zone_bands["west"][1] == "workday_presence"
+    runtime = await select_workday_room(hass, central, selected="")
+    assert runtime.building.settings.workday_presence_zone_id is None
+    assert runtime.zone_bands["west"][0] == "away"
+
+
+async def test_manual_off_suppresses_workday_exception_until_next_alarm_cycle(
+    hass, freezer
+):
+    central, _, _ = await office(hass, start=300, workday="on")
+    runtime = await select_workday_room(hass, central)
+    hass.states.async_set(PRESENCE, "on")
+    await hass.async_block_till_done()
+    # This is an automatic start, not a manual room-controller takeover.
+
+    runtime.command_tracker.register("climate.west_ac", "heat", dt_util.utcnow())
+    hass.states.async_set("climate.west_ac", "heat")
+    await hass.async_block_till_done()
+    hass.states.async_set("climate.west_ac", "off")
+    await hass.async_block_till_done()
+    assert runtime.zone_bands["west"][0] == "away"
+    await later(hass, freezer, minutes=45)
+    assert runtime.zone_bands["west"][0] == "away"
+    assert await hass.config_entries.async_reload(central.entry_id)
+    await hass.async_block_till_done()
+    runtime = central.runtime_data
+    assert runtime.zone_bands["west"][0] == "away"
+    hass.states.async_set(PRESENCE, "off")
+    await hass.async_block_till_done()
+    hass.states.async_set(PRESENCE, "on")
+    await hass.async_block_till_done()
+    assert runtime.zone_bands["west"][1] == "workday_presence"
+
+
+async def test_workday_exception_ends_at_local_saturday_midnight(hass, freezer):
+    await hass.config.async_set_time_zone("Europe/Amsterdam")
+    freezer.move_to("2026-10-23T21:30:00+00:00")  # Friday 23:30 local.
+    central, _, _ = await office(hass, start=3000, workday="on")
+    runtime = await select_workday_room(hass, central)
+    hass.states.async_set(PRESENCE, "on")
+    await hass.async_block_till_done()
+    assert runtime.zone_bands["west"][1] == "workday_presence"
+    await later(hass, freezer, minutes=30)
+    assert runtime.zone_bands["west"][0] == "away"
+
+
+async def test_workday_room_selection_is_redacted(hass):
+    central, _, _ = await office(hass, start=300, workday="on")
+    await select_workday_room(hass, central)
+    diagnostic = await async_get_config_entry_diagnostics(hass, central)
+    assert '"workday_presence_zone_id": "**REDACTED**"' in json.dumps(diagnostic)
