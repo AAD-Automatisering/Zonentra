@@ -4,6 +4,7 @@ import math
 import re
 from dataclasses import dataclass, replace
 from dataclasses import field as dataclass_field
+from functools import cached_property
 from typing import Any
 
 from .const import KINDS
@@ -194,6 +195,13 @@ class Building:
     groups: tuple[EquipmentGroup, ...]
     equipment: tuple[Equipment, ...]
     settings: BuildingSettings = dataclass_field(default_factory=BuildingSettings)
+
+    @cached_property
+    def floor_only_zones(self) -> frozenset[str]:
+        """Rooms with configured floor heating and no indoor units."""
+        return frozenset(
+            item.zone_id for item in self.equipment if item.kind == "floor_heating"
+        ) - {item.zone_id for item in self.equipment if item.kind == "hvac"}
 
     @property
     def entity_ids(self) -> frozenset[str]:

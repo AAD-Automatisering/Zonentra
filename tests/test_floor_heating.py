@@ -4,6 +4,7 @@ from dataclasses import replace
 from datetime import timedelta
 
 import pytest
+from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import entity_registry as er
 from homeassistant.util import dt as dt_util
 from homeassistant.util.unit_system import US_CUSTOMARY_SYSTEM
@@ -161,6 +162,50 @@ async def test_floor_default_off_sensor_and_switch_visible(hass):
     await hass.async_block_till_done()
     assert runtime.floor_regulated("west")
     assert floor_calls(mocks)[0].service == "set_temperature"
+
+
+async def test_floor_only_thermostat_exposes_heat_and_off(hass):
+    set_states(hass, "west", temperature="25")
+    hass.states.async_set(FLOOR, "off", ATTRS)
+    central = await setup_central(hass)
+    room = await add_zone(
+        hass, zone_options("west", group_id=None, floor_heating_entities=[FLOOR])
+    )
+    climate_id = er.async_get(hass).async_get_entity_id(
+        "climate", DOMAIN, f"{room.entry_id}_thermostat"
+    )
+    thermostat = hass.states.get(climate_id)
+    assert thermostat.state == "heat"
+    assert thermostat.attributes["hvac_modes"] == ["heat", "off"]
+    assert "target_temp_high" not in thermostat.attributes
+    assert central.runtime_data.zone_demands["west"].reason == "thermostat_heat_only"
+
+    for service, data in (
+        ("set_hvac_mode", {"hvac_mode": "cool"}),
+        ("set_temperature", {"hvac_mode": "cool", "temperature": 24}),
+    ):
+        with pytest.raises(ServiceValidationError):
+            await hass.services.async_call(
+                "climate", service, {"entity_id": climate_id, **data}, blocking=True
+            )
+
+    for service, mode in (("turn_off", "off"), ("turn_on", "heat")):
+        await hass.services.async_call(
+            "climate", service, {"entity_id": climate_id}, blocking=True
+        )
+        assert hass.states.get(climate_id).state == mode
+
+
+@pytest.mark.parametrize(
+    "stored_mode, expected", [("heat_cool", "heat"), ("cool", "off"), ("off", "off")]
+)
+async def test_floor_only_thermostat_restores_supported_mode(
+    hass, stored_mode, expected
+):
+    runtime, _, _ = await setup_floor(hass)
+    runtime.load_thermostats({"zones": {"west": {"hvac_mode": stored_mode}}})
+    runtime.refresh()
+    assert runtime.thermostat("west").hvac_mode == expected
 
 
 async def test_setpoint_confirmed_before_heat_and_no_repeated_commands(hass):
@@ -490,7 +535,7 @@ async def test_local_floor_options_round_trip(hass):
 
 
 async def test_unconfirmed_cooling_stop_remains_blocked_after_timeout(hass, freezer):
-    runtime, _, _ = await setup_floor(hass, temperature="25")
+    runtime, _, _ = await setup_floor(hass, temperature="25", units=True)
     await report(hass)
     runtime.set_thermostat("west", floor_regulation=True)
     await hass.async_block_till_done()
@@ -615,7 +660,7 @@ async def test_floor_stays_off_when_airco_cooling_without_thermal_demand(hass, m
 
 
 async def test_cooling_does_not_release_on_contradictory_floor_activity(hass):
-    runtime, _, _ = await setup_floor(hass, temperature="25")
+    runtime, _, _ = await setup_floor(hass, temperature="25", units=True)
     await report(hass, "off", hvac_action="heating")
     runtime.set_thermostat("west", floor_regulation=True)
     assert runtime.hvac_demands["west"].reason == "floor_stop_unconfirmed"

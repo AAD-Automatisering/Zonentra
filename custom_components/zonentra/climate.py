@@ -28,7 +28,7 @@ from homeassistant.components.climate import (
 from homeassistant.const import ATTR_TEMPERATURE, UnitOfTemperature
 
 from .entity import ZoneEntity, zone_context
-from .thermostat import PRESETS, UNIT_MODES, single_target
+from .thermostat import FLOOR_ONLY_MODES, PRESETS, UNIT_MODES, single_target
 
 BASE_FEATURES = (
     ClimateEntityFeature.TARGET_TEMPERATURE
@@ -64,7 +64,6 @@ class ZonentraThermostat(ZoneEntity, ClimateEntity):
     _attr_name = None  # The thermostat carries the zone (device) name.
     _attr_translation_key = "thermostat"
     _attr_icon = "mdi:home-thermometer"
-    _attr_supported_features = BASE_FEATURES
     _attr_temperature_unit = UnitOfTemperature.CELSIUS
     _attr_preset_modes = list(PRESETS)
     _attr_min_temp = 5
@@ -88,7 +87,22 @@ class ZonentraThermostat(ZoneEntity, ClimateEntity):
         return HVACMode.HEAT_COOL
 
     @property
+    def _floor_only(self) -> bool:
+        runtime = self.runtime
+        return (
+            runtime is not None and self._zone_id in runtime.building.floor_only_zones
+        )
+
+    @property
+    def supported_features(self) -> ClimateEntityFeature:
+        if self._floor_only:
+            return BASE_FEATURES & ~ClimateEntityFeature.TARGET_TEMPERATURE_RANGE
+        return BASE_FEATURES
+
+    @property
     def hvac_modes(self) -> list[HVACMode]:
+        if self._floor_only:
+            return [HVACMode(mode) for mode in FLOOR_ONLY_MODES]
         modes, _ = self._options()
         return [
             self._both(modes),
@@ -256,7 +270,7 @@ class ZonentraThermostat(ZoneEntity, ClimateEntity):
         self._change(preset=preset_mode)
 
     async def async_turn_on(self) -> None:
-        self._change(hvac_mode="heat_cool")
+        self._change(hvac_mode="heat" if self._floor_only else "heat_cool")
 
     async def async_turn_off(self) -> None:
         self._change(hvac_mode="off")

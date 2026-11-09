@@ -80,6 +80,7 @@ from .shading import ScreenDecision, ScreenMove, SunMemory
 from .temperature import convert_temperature
 from .thermostat import (
     CLEAR_MANUAL,
+    FLOOR_ONLY_MODES,
     NATIVE_GAIN,
     NATIVE_MAX_OFFSET,
     UNIT_MODES,
@@ -255,6 +256,7 @@ class BuildingRuntime(
         """Refresh configured state values on an input event, without polling."""
         if self._closed:
             return
+        self._sync_floor_only_modes()
         now = dt_util.utcnow()
         if (
             event is not None
@@ -851,6 +853,20 @@ class BuildingRuntime(
         if changed:
             self._save_thermostats()
 
+    def _sync_floor_only_modes(self) -> None:
+        changed = False
+        for zone_id in self.building.floor_only_zones:
+            thermostat = self.thermostat(zone_id)
+            if thermostat.hvac_mode in FLOOR_ONLY_MODES:
+                continue
+            # Keep heating allowed for the old automatic mode. Modes that
+            # previously stopped the floor must not start heating on reload.
+            mode = "heat" if thermostat.hvac_mode == "heat_cool" else "off"
+            self.thermostats[zone_id] = replace(thermostat, hvac_mode=mode)
+            changed = True
+        if changed:
+            self._save_thermostats()
+
     def thermostat(self, zone_id: str) -> Thermostat:
         return self.thermostats.get(zone_id) or Thermostat()
 
@@ -864,6 +880,12 @@ class BuildingRuntime(
         zone = next((z for z in self.building.zones if z.id == zone_id), None)
         if zone is None or not self.active_capable:
             raise ValueError("zone_not_loaded")
+        if (
+            "hvac_mode" in changes
+            and zone_id in self.building.floor_only_zones
+            and changes["hvac_mode"] not in FLOOR_ONLY_MODES
+        ):
+            raise ValueError("invalid_hvac_mode")
         if "fan_mode" in changes:
             # 0.13.5: auto (or none) is the automatic fan; a fixed speed holds
             # for the manual override time, then the fan is automatic again.

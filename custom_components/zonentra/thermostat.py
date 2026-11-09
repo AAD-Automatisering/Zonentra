@@ -32,6 +32,7 @@ from .executor import ModeCommand
 from .presence import Occupancy
 
 THERMOSTAT_MODES = ("heat_cool", "heat", "cool", "dry", "fan_only", "off")
+FLOOR_ONLY_MODES = ("heat", "off")
 # Modes that run the units without heating or cooling demand of their own.
 UNIT_MODES = ("dry", "fan_only")
 # Demand that a thermostat mode does not allow, and the reason it is dropped.
