@@ -30,6 +30,7 @@ from .migration import (
     migrate_options,
 )
 from .models import (
+    CONTACT_DOMAINS,
     VANE_DOMAINS,
     ZONE_ENTITY_FIELDS,
     BuildingSettings,
@@ -327,7 +328,7 @@ def zone_fields(groups: list[dict]) -> dict:
         vol.Optional("calendar_entity"): entity_selector("calendar"),
         vol.Optional("use_building_preconditioning"): selector.BooleanSelector(),
         vol.Optional("use_building_floor_heating"): selector.BooleanSelector(),
-        vol.Optional("contact_entities"): multi("binary_sensor"),
+        vol.Optional("contact_entities"): multi(list(CONTACT_DOMAINS)),
         vol.Optional("floor_heating_entities"): multi(["climate", "number"]),
         vol.Optional("shading_entities"): multi("cover"),
         vol.Optional("facade"): selector.SelectSelector(
@@ -523,9 +524,29 @@ class ZoneFormMixin:
         central = central_entry(self.hass)
         return list(central.options.get("groups", [])) if central else []
 
+    def _source_schema(self, fields: dict) -> vol.Schema:
+        """Keep Zonentra's own entities out of the room's source pickers."""
+        registry = er.async_get(self.hass)
+        excluded = sorted(
+            entry.entity_id
+            for entry in registry.entities.values()
+            if entry.platform == DOMAIN
+        )
+        return vol.Schema(
+            {
+                key: selector.EntitySelector(
+                    {**field.config, "exclude_entities": excluded}
+                )
+                if isinstance(field, selector.EntitySelector)
+                else field
+                for key, field in fields.items()
+            }
+        )
+
     def _zone_form(self, step_id, values, errors):
         schema = self.add_suggested_values_to_schema(
-            vol.Schema(zone_fields(self._groups())), {**ZONE_DEFAULTS, **values}
+            self._source_schema(zone_fields(self._groups())),
+            {**ZONE_DEFAULTS, **values},
         )
         return self.async_show_form(step_id=step_id, data_schema=schema, errors=errors)
 
@@ -711,7 +732,7 @@ class ZoneOptionsFlow(ZoneFormMixin, OptionsFlow):
         fields = zone_section_fields(section, self._groups(), values)
         self._room_visible_keys = {marker.schema for marker in fields}
         schema = self.add_suggested_values_to_schema(
-            vol.Schema(fields),
+            self._source_schema(fields),
             {
                 **building_defaults(),
                 **building,
@@ -907,9 +928,7 @@ class ZonentraOptionsFlow(OptionsFlowWithReload):
                     ): selector.BooleanSelector(),
                     vol.Optional("heating_limit"): numeric(5, 35, unit="°C"),
                     vol.Optional("cooling_limit"): numeric(5, 35, unit="°C"),
-                    vol.Optional("contact_entities"): selector.EntitySelector(
-                        {"filter": {"domain": "binary_sensor"}, "multiple": True}
-                    ),
+                    vol.Optional("contact_entities"): multi(list(CONTACT_DOMAINS)),
                     vol.Optional("weight"): numeric(0.1, 10),
                     vol.Optional("hysteresis"): numeric(0.1, 2, unit="°C"),
                     vol.Optional("sensor_validation"): choice(

@@ -4,6 +4,7 @@ from copy import deepcopy
 
 import pytest
 from homeassistant.data_entry_flow import FlowResultType
+from homeassistant.helpers import entity_registry as er
 
 from custom_components.zonentra.config_flow import (
     ZONE_OPTION_SECTIONS,
@@ -11,6 +12,7 @@ from custom_components.zonentra.config_flow import (
     zone_parameter_fields,
     zone_section_fields,
 )
+from custom_components.zonentra.const import DOMAIN
 from tests.test_entry_layout import (
     add_zone,
     edit_zone_subject,
@@ -159,6 +161,45 @@ async def test_invalid_room_subject_keeps_previous_draft(hass):
     )
     assert flow["type"] == FlowResultType.MENU
     assert room.options["temperature_entity"] == "sensor.west_temperature"
+
+
+async def test_room_contact_picker_accepts_covers_and_excludes_zonentra_sources(hass):
+    set_states(hass, "west")
+    door = "cover.west_door"
+    hass.states.async_set(door, "closed")
+    hass.states.async_set("switch.west_light", "off")
+    central = await setup_central(hass)
+    room = await add_zone(hass, zone_options("west"))
+    zonentra_sensor = er.async_get(hass).async_get_entity_id(
+        "sensor", DOMAIN, f"{room.entry_id}_demand"
+    )
+    assert zonentra_sensor
+
+    flow = await hass.config_entries.options.async_init(room.entry_id)
+    form = await hass.config_entries.options.async_configure(
+        flow["flow_id"], {"next_step_id": "zone_sensors"}
+    )
+    contact_picker = (
+        form["data_schema"].schema["contact_entities"].serialize()["selector"]["entity"]
+    )
+    assert contact_picker["filter"] == [{"domain": ["binary_sensor", "cover"]}]
+    assert zonentra_sensor in contact_picker["exclude_entities"]
+
+    result = await hass.config_entries.options.async_configure(
+        form["flow_id"], {"contact_entities": ["switch.west_light"]}
+    )
+    assert result["errors"] == {"base": "invalid_entity"}
+    result = await hass.config_entries.options.async_configure(
+        form["flow_id"],
+        {"temperature_entity": "sensor.west_temperature", "contact_entities": [door]},
+    )
+    assert result["type"] == FlowResultType.MENU
+    result = await hass.config_entries.options.async_configure(
+        form["flow_id"], {"next_step_id": "finish"}
+    )
+    assert result["type"] == FlowResultType.CREATE_ENTRY
+    await hass.async_block_till_done()
+    assert central.runtime_data.building.zones[0].contact_entities == (door,)
 
 
 async def test_local_parameters_are_shown_only_after_disabling_inheritance(hass):

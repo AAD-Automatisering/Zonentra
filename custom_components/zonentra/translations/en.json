@@ -26,11 +26,11 @@
           "temperature_entity": "Room temperature sensor",
           "indoor_units": "Indoor units (climate entities)",
           "group_id": "Outdoor unit group",
-          "weight": "Zone weight",
+          "weight": "Zone weight (optional, default 1)",
           "use_building_limits": "Use central climate limits",
           "use_building_parameters": "Use central regulation parameters",
           "occupancy_entity": "Motion sensor (optional; without motion the zone uses the eco band)",
-          "contact_entities": "Window and door contacts (optional)",
+          "contact_entities": "Window and door contacts or covers (optional)",
           "floor_heating_entities": "Floor thermostats with room temperature setpoint (climate; legacy number observation only)",
           "shading_entities": "Shading (optional)",
           "vane_entity": "Vane (optional; select, number or switch entity of the indoor unit)",
@@ -211,8 +211,8 @@
           "occupancy_entity": "Motion sensor (optional; without motion the zone uses the eco band)",
           "heating_limit": "Heating limit (°C)",
           "cooling_limit": "Cooling limit (°C)",
-          "contact_entities": "Window and door contacts (optional)",
-          "weight": "Zone weight",
+          "contact_entities": "Window and door contacts or covers (optional)",
+          "weight": "Zone weight (optional, default 1)",
           "hysteresis": "Temperature hysteresis (°C)",
           "sensor_validation": "Sensor validation (state_based = default; update_based only for periodically reporting sensors)",
           "max_age_seconds": "Maximum update age for update_based (seconds; ignored by state_based)",
@@ -351,11 +351,11 @@
           "temperature_entity": "Room temperature sensor",
           "indoor_units": "Indoor units (climate entities)",
           "group_id": "Outdoor unit group",
-          "weight": "Zone weight",
+          "weight": "Zone weight (optional, default 1)",
           "use_building_limits": "Use central climate limits",
           "use_building_parameters": "Use central regulation parameters",
           "occupancy_entity": "Motion sensor (optional; without motion the zone uses the eco band)",
-          "contact_entities": "Window and door contacts (optional)",
+          "contact_entities": "Window and door contacts or covers (optional)",
           "floor_heating_entities": "Floor thermostats with room temperature setpoint (climate; legacy number observation only)",
           "shading_entities": "Shading (optional)",
           "vane_entity": "Vane (optional; select, number or switch entity of the indoor unit)",
@@ -419,7 +419,7 @@
         "description": "Name, weight and central climate limits. Set fixed temperature limits on the room device.",
         "data": {
           "name": "Name",
-          "weight": "Zone weight",
+          "weight": "Zone weight (optional, default 1)",
           "use_building_limits": "Use central climate limits"
         },
         "submit": "Apply and return"
@@ -430,7 +430,7 @@
         "data": {
           "temperature_entity": "Room temperature sensor",
           "occupancy_entity": "Motion sensor (optional; without motion the zone uses the eco band)",
-          "contact_entities": "Window and door contacts (optional)"
+          "contact_entities": "Window and door contacts or covers (optional)"
         },
         "submit": "Apply and return"
       },

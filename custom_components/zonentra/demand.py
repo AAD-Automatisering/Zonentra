@@ -102,7 +102,11 @@ def collect_zone(
         ),
         read(sources.get(zone.occupancy_entity), "occupancy", now),
         tuple(
-            read(sources.get(entity), "contact", now)
+            read(
+                sources.get(entity),
+                "cover_contact" if entity.startswith("cover.") else "contact",
+                now,
+            )
             for entity in zone.contact_entities
         ),
         equipment("hvac"),

@@ -15,6 +15,17 @@ from datetime import datetime
 STATE_BASED = "state_based"
 UPDATE_BASED = "update_based"
 VALIDATION_STRATEGIES = (STATE_BASED, UPDATE_BASED)
+COVER_CONTACT_STATES = {
+    "opening": "open",
+    "open": "open",
+    "closing": "open",
+    "closed": "closed",
+}
+DISCRETE_STATES = {
+    "occupancy": {"on": "occupied", "off": "unoccupied"},
+    "contact": {"on": "open", "off": "closed"},
+    "cover_contact": COVER_CONTACT_STATES,
+}
 
 
 @dataclass(frozen=True)
@@ -90,11 +101,8 @@ def read(
         return result(None, "unreliable", "invalid_timestamp")
     if max_age and (now - timestamp).total_seconds() >= max_age:
         return result(None, "stale", "no_report_within_max_age")
-    if kind in ("occupancy", "contact"):
-        value = {
-            "on": "occupied" if kind == "occupancy" else "open",
-            "off": "unoccupied" if kind == "occupancy" else "closed",
-        }.get(source.state)
+    if kind in DISCRETE_STATES:
+        value = DISCRETE_STATES[kind].get(source.state)
         return (
             result(value, "valid")
             if value

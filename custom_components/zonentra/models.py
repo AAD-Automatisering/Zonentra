@@ -26,6 +26,7 @@ ZONE_ENTITY_FIELDS = (
     "calendar_entity",
     "vane_entity",
 )
+CONTACT_DOMAINS = ("binary_sensor", "cover")
 VANE_DOMAINS = (
     "select",
     "input_select",
@@ -396,7 +397,7 @@ def build_model(building_id: str, name: str, topology: dict[str, Any]) -> Buildi
             )
             _entity(getattr(zone, field), domains)
         for entity in zone.contact_entities:
-            _entity(entity, ("binary_sensor",))
+            _entity(entity, CONTACT_DOMAINS)
         if zone.group_id and zone.group_id not in group_ids:
             raise ValueError("invalid_reference")
         _validate_preconditioning(zone)

@@ -44,6 +44,7 @@ from .heating_correction import MAX_REPORT_GAP, heating_correction
 from .indoor import compare_modes, observe_group, observe_unit
 from .models import Building
 from .observations import (
+    COVER_CONTACT_STATES,
     ClimateAttributes,
     Reading,
     SourceState,
@@ -181,6 +182,7 @@ class BuildingRuntime(
         self.fan_applied: dict[str, str] = {}  # fan speed sent per unit
         # 0.10 room state (like VTherm's sensors): window, safety, trend, fan.
         self.windows: dict[str, str] = {}
+        self.cover_open_since: dict[str, datetime | None] = {}
         self.safety: dict[str, tuple[str, str]] = {}
         self.trends: dict[str, Trend] = {}
         self.auto_fans: dict[str, str | None] = {}
@@ -295,6 +297,7 @@ class BuildingRuntime(
                     state.last_changed,
                     self._climate(state) if entity_id.startswith("climate.") else None,
                 )
+        self._track_cover_contacts(sources)
         transitions = self._transitions(event, now)
         decisions = simulate(self.building, observations)
         if decisions != self.decisions:
@@ -569,6 +572,28 @@ class BuildingRuntime(
 
     # --- Room thermostats (0.9) -----------------------------------------------
 
+    def _track_cover_contacts(self, sources: dict[str, SourceState]) -> None:
+        """Keep one open time across opening, open and closing reports."""
+        contacts = {
+            entity_id
+            for zone in self.building.zones
+            for entity_id in zone.contact_entities
+            if entity_id.startswith("cover.")
+        }
+        opened = {}
+        for entity_id in contacts:
+            source = sources.get(entity_id)
+            if (
+                source is None
+                or not source.trustworthy
+                or COVER_CONTACT_STATES.get(source.state) != "open"
+            ):
+                continue
+            since = self.cover_open_since.get(entity_id, source.changed_at)
+            opened[entity_id] = since
+            sources[entity_id] = replace(source, changed_at=since)
+        self.cover_open_since = opened
+
     def _room_state(self, now) -> None:
         """Window, safety and temperature trend per zone (0.10)."""
         settings = self.building.settings
@@ -682,6 +707,7 @@ class BuildingRuntime(
         "fan_sent_at",
         "vane_applied",
         "motion_memories",
+        "cover_open_since",
         "trends",
         "sun_memory",
         "wind_memory",

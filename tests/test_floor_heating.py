@@ -435,6 +435,49 @@ async def test_window_stops_floor_independent_of_group_switch(
     assert [call.data.get("hvac_mode") for call in mocks["set_hvac_mode"]] == ["heat"]
 
 
+async def test_cover_contact_stays_open_until_fully_closed(hass, freezer):
+    door = "cover.west_door"
+    hass.states.async_set(door, "closed")
+    runtime, _, mocks = await setup_floor(hass, contact_entities=[door])
+    await report(hass)
+    runtime.set_thermostat("west", floor_regulation=True)
+    await hass.async_block_till_done()
+    assert runtime.windows["west"] == "closed"
+
+    hass.states.async_set(door, "opening")
+    await hass.async_block_till_done()
+    assert runtime.windows["west"] == "opening"
+    await later(hass, freezer, seconds=15)
+    hass.states.async_set(door, "open")
+    await hass.async_block_till_done()
+    assert not floor_calls(mocks)
+    await later(hass, freezer, seconds=16)
+    assert runtime.windows["west"] == "open"
+    assert floor_calls(mocks)[0].service == "turn_off"
+    await report(hass, "off")
+
+    hass.states.async_set(door, "closing")
+    await hass.async_block_till_done()
+    assert runtime.windows["west"] == "open"
+    assert [call.service for call in floor_calls(mocks)] == ["turn_off"]
+    hass.states.async_set(door, "closed")
+    await hass.async_block_till_done()
+    assert runtime.windows["west"] == "closed"
+    assert runtime.floor_plans["floor_floor"]["status"] == "waiting_after_window_closed"
+    await later(hass, freezer, minutes=4)
+    assert not mocks["set_hvac_mode"]
+
+    # Even a short reopening during the wait restarts the delay.
+    hass.states.async_set(door, "opening")
+    await hass.async_block_till_done()
+    hass.states.async_set(door, "closed")
+    await hass.async_block_till_done()
+    await later(hass, freezer, seconds=299)
+    assert not mocks["set_hvac_mode"]
+    await later(hass, freezer, seconds=1)
+    assert [call.data.get("hvac_mode") for call in mocks["set_hvac_mode"]] == ["heat"]
+
+
 @pytest.mark.parametrize("preset", ["comfort", "eco", "away"])
 @pytest.mark.parametrize("units", [False, True])
 async def test_floor_keeps_fixed_baseline_for_every_preset(hass, preset, units):
