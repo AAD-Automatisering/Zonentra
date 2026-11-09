@@ -53,7 +53,13 @@ async def async_setup_entry(hass, entry, async_add_entities) -> None:
         entities = []
         if not entry.options.get("use_building_limits", True):
             context = zone_context(hass, entry)
-            entities = [ZoneLimitNumber(entry, key, **context) for key in LIMIT_KEYS]
+            floor_only = bool(
+                entry.options.get("floor_heating_entities")
+            ) and not entry.options.get("indoor_units")
+            keys = tuple(
+                key for key in LIMIT_KEYS if not floor_only or "cooling" not in key
+            )
+            entities = [ZoneLimitNumber(entry, key, **context) for key in keys]
         remove_stale(hass, entry, "number", entities)
         async_add_entities(entities)
         return
@@ -175,17 +181,53 @@ class ZoneLimitNumber(ZoneEntity, LimitNumber):
         )
         return {"source": "zone" if own else "central"}
 
+    @property
+    def native_max_value(self) -> float:
+        runtime = self.runtime
+        if runtime is not None and self._zone_id in runtime.building.floor_only_zones:
+            zone = next(z for z in runtime.building.zones if z.id == self._zone_id)
+            return min(35, 35 - 2 * zone.hysteresis - self._attr_native_step)
+        return super().native_max_value
+
     async def async_set_native_value(self, value: float) -> None:
+        runtime = self.runtime
+        floor_only = (
+            runtime is not None and self._zone_id in runtime.building.floor_only_zones
+        )
+        zone = (
+            next((z for z in runtime.building.zones if z.id == self._zone_id), None)
+            if runtime
+            else None
+        )
         if self._key in ("heating_limit", "cooling_limit"):
             heating, cooling = (
                 reading.value for reading in self.runtime.comfort[self._zone_id]
             )
             band = {"heating_limit": heating, "cooling_limit": cooling}
             band[self._key] = value
+            if (
+                floor_only
+                and self._key == "heating_limit"
+                and band["cooling_limit"] is not None
+                and value + 2 * zone.hysteresis >= band["cooling_limit"]
+            ):
+                band["cooling_limit"] = min(
+                    35, value + 2 * zone.hysteresis + self._attr_native_step
+                )
             if band["heating_limit"] is None or band["cooling_limit"] is None:
                 # No band yet: open one 2 °C wide around the first value set.
                 other = PAIR[self._key]
                 band[other] = value + (2 if other == "cooling_limit" else -2)
             self._change(**band)
             return
-        self._change(**{self._key: value})
+        changes = {self._key: value}
+        if floor_only and self._key in ("eco_heating_limit", "away_heating_limit"):
+            cooling_key = PAIR[self._key]
+            cooling = getattr(self.thermostat, cooling_key)
+            if cooling is None:
+                cooling = getattr(zone, cooling_key)
+            if value + 2 * zone.hysteresis >= cooling:
+                changes[cooling_key] = min(
+                    35, value + 2 * zone.hysteresis + self._attr_native_step
+                )
+        self._change(**changes)

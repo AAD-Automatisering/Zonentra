@@ -12,6 +12,7 @@ from homeassistant.setup import async_setup_component
 from homeassistant.util import dt as dt_util
 from homeassistant.util.unit_system import US_CUSTOMARY_SYSTEM
 
+from custom_components.zonentra import central_entry
 from custom_components.zonentra.const import DOMAIN
 from custom_components.zonentra.diagnostics import async_get_config_entry_diagnostics
 from custom_components.zonentra.floor_heating import heating_progress
@@ -924,3 +925,41 @@ async def test_disabling_floor_regulation_cannot_release_unconfirmed_stop(hass):
     assert runtime._floor_cooling_block("west")
     await report(hass, "off", hvac_action="idle")
     assert not runtime._floor_cooling_block("west")
+
+
+async def test_floor_only_shows_heating_presets_and_restores_cooling_for_airco(hass):
+    runtime, room, _ = await setup_floor(
+        hass, use_building_limits=False, floor_heating_follow_presets=True
+    )
+    registry = er.async_get(hass)
+
+    def number(key):
+        return registry.async_get_entity_id("number", DOMAIN, f"{room.entry_id}_{key}")
+
+    for key in ("comfort_heating_limit", "eco_heating_limit", "away_heating_limit"):
+        assert number(key) is not None
+    for key in ("comfort_cooling_limit", "eco_cooling_limit", "away_cooling_limit"):
+        assert number(key) is None
+
+    for key in ("comfort_heating_limit", "eco_heating_limit", "away_heating_limit"):
+        await hass.services.async_call(
+            "number",
+            "set_value",
+            {"entity_id": number(key), "value": 25},
+            blocking=True,
+        )
+    thermostat = runtime.thermostat("west")
+    assert (
+        thermostat.heating_limit,
+        thermostat.eco_heating_limit,
+        thermostat.away_heating_limit,
+    ) == (25, 25, 25)
+
+    hass.states.async_set("climate.west_ac", "off", {"temperature": 22})
+    hass.config_entries.async_update_entry(
+        room, options={**room.options, "indoor_units": ["climate.west_ac"]}
+    )
+    await hass.async_block_till_done()
+    for key in ("comfort_cooling_limit", "eco_cooling_limit", "away_cooling_limit"):
+        assert number(key) is not None
+    assert central_entry(hass).runtime_data.thermostat("west").heating_limit == 25
