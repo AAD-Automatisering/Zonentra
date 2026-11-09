@@ -122,6 +122,7 @@ def building_fields(limits: bool = True) -> dict:
         vol.Optional("setpoint_max_offset"): numeric(0, 5, unit="°C"),
         vol.Optional("setpoint_interval_seconds"): numeric(60, 3600, 1, "s"),
         vol.Optional("window_delay_seconds"): numeric(0, 3600, 1, "s"),
+        vol.Optional("floor_window_resume_delay_minutes"): numeric(0, 60, 1, "min"),
         vol.Optional("auto_fan_step"): numeric(0.2, 2, unit="°C"),
         # Screens (0.11): sunshine from solar power; wind alarm blocks.
         vol.Optional("sun_entity"): entity_selector("sun"),
@@ -186,6 +187,7 @@ CENTRAL_SECTIONS = {
         "setpoint_max_offset",
         "setpoint_interval_seconds",
         "window_delay_seconds",
+        "floor_window_resume_delay_minutes",
         "auto_fan_step",
     ),
     "screens": (
@@ -265,6 +267,7 @@ def building_defaults() -> dict:
                 "setpoint_max_offset",
                 "setpoint_interval_seconds",
                 "window_delay_seconds",
+                "floor_window_resume_delay_minutes",
                 "auto_fan_step",
                 "sun_power_threshold",
                 "screen_rain_protection",

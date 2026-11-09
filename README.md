@@ -59,6 +59,10 @@ Zonentra-thermostaat. Voor eigen presettemperaturen zet je bij **Algemeen**
 **Centrale klimaatgrenzen gebruiken** uit en stel je op het ruimteapparaat
 **Comfort verwarmen tot**, **Eco verwarmen tot** en **Afwezig verwarmen tot** in.
 Met **Volg voorinstellingen** uit gebruikt de vloer het vaste vloerdoel.
+Na een pauze door een open raam of deur wacht de vloer standaard vijf minuten
+nadat alle contacten dicht melden. Gaat tijdens het wachten een contact open,
+dan begint de wachttijd opnieuw zodra alles dicht is. Stel de wachttijd in via
+de centrale **Ruimteregeling**. Met 0 minuten hervat de vloer direct.
 
 **Regenbeveiliging** staat standaard aan zodra een weerbron is gekoppeld. De
 actuele toestand van de centrale `weather`-entiteit wordt gebruikt, ook die van

@@ -146,6 +146,7 @@
           "setpoint_max_offset": "Maximum setpoint correction of an indoor unit (°C)",
           "setpoint_interval_seconds": "Minimum time between setpoint or fan speed changes (seconds)",
           "window_delay_seconds": "Open window: delay before the room stops (seconds)",
+          "floor_window_resume_delay_minutes": "Floor heating: wait after closing windows or doors (minutes, default 5, 0 = immediate)",
           "auto_fan_step": "Automatic fan: °C from the target per fan speed step",
           "floor_heating_limit": "Floor heating: fixed minimum room temperature (°C; default 16)"
         },
@@ -300,6 +301,7 @@
           "setpoint_max_offset": "Room regulation: maximum setpoint correction of an indoor unit (°C)",
           "setpoint_interval_seconds": "Minimum time between setpoint or fan speed changes (seconds)",
           "window_delay_seconds": "Open window: delay before the room stops (seconds)",
+          "floor_window_resume_delay_minutes": "Floor heating: wait after closing windows or doors (minutes, default 5, 0 = immediate)",
           "sun_power_entity": "Screens: solar power sensor (sunshine)",
           "sun_power_threshold": "Screens: solar power above which the sun shines (W)",
           "screen_block_entity": "Block entity, e.g. wind alarm (optional; only off allows movement)",
@@ -709,6 +711,7 @@
           "unsupported_modes": "Heating mode not supported",
           "unsupported_setpoint": "Room temperature setpoint missing",
           "heating_target_unknown": "Heating target unknown",
+          "waiting_after_window_closed": "Waiting after window or door closed",
           "target_out_of_range": "Target outside device limits",
           "cannot_stop": "Cannot stop",
           "room_temperature_unknown": "Room temperature unknown"

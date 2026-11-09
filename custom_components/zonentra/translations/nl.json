@@ -146,6 +146,7 @@
           "setpoint_max_offset": "Maximale setpointcorrectie van een binnenunit (°C)",
           "setpoint_interval_seconds": "Minimale tijd tussen setpoint- of ventilatorstandwijzigingen (seconden)",
           "window_delay_seconds": "Raam open: vertraging voordat de ruimte stopt (seconden)",
+          "floor_window_resume_delay_minutes": "Vloerverwarming: wachttijd na sluiten van raam of deur (minuten, standaard 5, 0 = direct)",
           "auto_fan_step": "Automatische ventilator: graden van het doel per ventilatorstand",
           "floor_heating_limit": "Vloerverwarming: vaste ondergrens kamertemperatuur (°C; standaard 16)"
         },
@@ -300,6 +301,7 @@
           "setpoint_max_offset": "Ruimteregeling: maximale setpointcorrectie van een binnenunit (°C)",
           "setpoint_interval_seconds": "Minimale tijd tussen setpoint- of ventilatorstandwijzigingen (seconden)",
           "window_delay_seconds": "Raam open: vertraging voordat de ruimte stopt (seconden)",
+          "floor_window_resume_delay_minutes": "Vloerverwarming: wachttijd na sluiten van raam of deur (minuten, standaard 5, 0 = direct)",
           "sun_power_entity": "Zonwering: vermogen zonnepanelen (zon schijnt)",
           "sun_power_threshold": "Zonwering: vermogen waarboven de zon schijnt (W)",
           "screen_block_entity": "Blokkeer-entiteit, bijv. windalarm (optioneel; alleen uit staat beweging toe)",
@@ -709,6 +711,7 @@
           "unsupported_modes": "Verwarmingsstand niet ondersteund",
           "unsupported_setpoint": "Kamertemperatuursetpoint ontbreekt",
           "heating_target_unknown": "Verwarmingsdoel onbekend",
+          "waiting_after_window_closed": "Wacht na sluiten van raam of deur",
           "target_out_of_range": "Doel buiten apparaatgrenzen",
           "cannot_stop": "Uitschakelen niet ondersteund",
           "room_temperature_unknown": "Ruimtetemperatuur onbekend"

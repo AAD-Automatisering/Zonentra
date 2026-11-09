@@ -137,6 +137,7 @@ class BuildingSettings:
     setpoint_interval_seconds: float = 300.0
     # 0.10 open window: the room stops after this delay (like VTherm).
     window_delay_seconds: float = 30.0
+    floor_window_resume_delay_minutes: float = 5.0
     # 0.13.1 automatic fan: °C of distance to the target per fan speed step.
     auto_fan_step: float = 0.5
     # 0.11 screens: solar power says whether the sun shines; sun.sun where.
@@ -323,6 +324,7 @@ def build_model(building_id: str, name: str, topology: dict[str, Any]) -> Buildi
     _range(settings.setpoint_max_offset, 0, 5)
     _range(settings.setpoint_interval_seconds, 60, 3600)
     _range(settings.window_delay_seconds, 0, 3600)
+    _range(settings.floor_window_resume_delay_minutes, 0, 60)
     _range(settings.auto_fan_step, 0.2, 2)
     _entity(settings.sun_power_entity, ("sensor",))
     _entity(settings.sun_entity, ("sun",))

@@ -1152,6 +1152,7 @@ class FloorHeatingSensor(ZonentraDiagnosticSensor):
         "disabled",
         "off",
         "stopping",
+        "waiting_after_window_closed",
         "setting_target",
         "starting",
         "in_sync",

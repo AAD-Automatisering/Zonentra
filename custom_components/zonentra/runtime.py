@@ -2,7 +2,7 @@
 
 import logging
 from dataclasses import asdict, replace
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from homeassistant.const import EVENT_STATE_CHANGED, UnitOfTemperature
 from homeassistant.core import HomeAssistant, callback
@@ -149,6 +149,7 @@ class BuildingRuntime(
         self.floor_plans = {}
         self.floor_observations = {}
         self.floor_overrides = {}
+        self.floor_window_closed_since: dict[str, datetime | None] = {}
         self.heating_watches = {}
         self.heating_progress = {}
         self._floor_checks = []
@@ -664,6 +665,7 @@ class BuildingRuntime(
         "heating_watches",
         "heating_corrections",
         "floor_overrides",
+        "floor_window_closed_since",
         "coordination_memories",
         "overrides",
         "room_controller_use",

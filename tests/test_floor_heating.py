@@ -401,9 +401,21 @@ async def test_cooling_waits_for_floor_off_confirmation_and_final_guard(hass):
     assert not runtime._floor_cooling_block("west")
 
 
-async def test_window_stops_floor_independent_of_group_switch(hass, freezer):
+@pytest.mark.parametrize("resume_delay", [0, 2])
+async def test_window_stops_floor_independent_of_group_switch(
+    hass, freezer, resume_delay
+):
     runtime, _, mocks = await setup_floor(
         hass, contact_entities=["binary_sensor.window"]
+    )
+    runtime.apply_building(
+        replace(
+            runtime.building,
+            settings=replace(
+                runtime.building.settings,
+                floor_window_resume_delay_minutes=resume_delay,
+            ),
+        )
     )
     await report(hass)
     runtime.mode_active["outdoor_1"] = False
@@ -413,6 +425,14 @@ async def test_window_stops_floor_independent_of_group_switch(hass, freezer):
     await later(hass, freezer, seconds=31)
     assert runtime.windows["west"] == "open"
     assert floor_calls(mocks)[0].service == "turn_off"
+    await report(hass, "off")
+    hass.states.async_set("binary_sensor.window", "off")
+    await hass.async_block_till_done()
+    if resume_delay:
+        await later(hass, freezer, seconds=119)
+        assert not mocks["set_hvac_mode"]
+        await later(hass, freezer, seconds=1)
+    assert [call.data.get("hvac_mode") for call in mocks["set_hvac_mode"]] == ["heat"]
 
 
 @pytest.mark.parametrize("preset", ["comfort", "eco", "away"])

@@ -66,6 +66,22 @@ async def test_clearing_a_field_in_a_section_removes_it(hass):
     assert "presence_entity" not in central.options["building"]
 
 
+async def test_floor_resume_delay_can_be_disabled_in_central_settings(hass):
+    central = await setup_central(hass)
+    flow = await open_section(hass, central, "regulation")
+    key = "floor_window_resume_delay_minutes"
+    field = next(field for field in flow["data_schema"].schema if field.schema == key)
+    assert field.description["suggested_value"] == 5
+    flow = await hass.config_entries.options.async_configure(flow["flow_id"], {key: 0})
+    assert flow["type"] == FlowResultType.MENU
+    flow = await hass.config_entries.options.async_configure(
+        flow["flow_id"], {"next_step_id": "finish"}
+    )
+    assert flow["type"] == FlowResultType.CREATE_ENTRY
+    await hass.async_block_till_done()
+    assert central.runtime_data.building.settings.floor_window_resume_delay_minutes == 0
+
+
 async def test_invalid_section_input_stays_on_the_form(hass):
     central = await setup_central(hass)
     flow = await open_section(hass, central, "general")

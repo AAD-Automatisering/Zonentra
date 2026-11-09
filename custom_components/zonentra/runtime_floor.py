@@ -39,12 +39,36 @@ class FloorRuntimeMixin:
     def floor_regulated(self, zone_id):
         return self.active_capable and self.thermostat(zone_id).floor_regulation
 
+    def _track_floor_window_holds(self, zone_ids, now):
+        """After a window stop, wait until every contact stays closed."""
+        delay = timedelta(
+            minutes=self.building.settings.floor_window_resume_delay_minutes
+        )
+        previous = self.floor_window_closed_since
+        holds = {}
+        for zone_id in zone_ids:
+            contacts = self.zone_snapshots[zone_id].contacts
+            if not contacts or self.thermostat(zone_id).window_bypass:
+                continue
+            if self.windows[zone_id] == "open":
+                holds[zone_id] = None
+            elif zone_id in previous and delay:
+                if any(contact.value != "closed" for contact in contacts):
+                    holds[zone_id] = None
+                    continue
+                closed_since = previous[zone_id] or now
+                resume_at = closed_since + delay
+                if resume_at > now:
+                    holds[zone_id] = closed_since
+                    self._floor_checks.append(resume_at)
+        self.floor_window_closed_since = holds
+
     def _floor_stop(self, zone_id):
         mode = self.thermostat(zone_id).hvac_mode
         demand = self.zone_demands.get(zone_id)
         return (
             mode not in ("heat", "heat_cool")
-            or self.windows.get(zone_id) == "open"
+            or zone_id in self.floor_window_closed_since
             or (demand is not None and demand.demand == "cooling_demand")
             or any(
                 item.kind == "hvac"
@@ -139,6 +163,7 @@ class FloorRuntimeMixin:
         items = [
             item for item in self.building.equipment if item.kind == "floor_heating"
         ]
+        self._track_floor_window_holds({item.zone_id for item in items}, now)
         valid = {item.id for item in items}
         self.floor_overrides = {
             key: until
@@ -168,7 +193,12 @@ class FloorRuntimeMixin:
                 and trustworthy(state)
                 and "off" in state.attributes.get("hvac_modes", ())
             ):
-                plan["status"] = "off" if floor_off(state) else "stopping"
+                if not floor_off(state):
+                    plan["status"] = "stopping"
+                elif self.floor_window_closed_since.get(item.zone_id) is not None:
+                    plan["status"] = "waiting_after_window_closed"
+                else:
+                    plan["status"] = "off"
                 if state.state != "off":
                     plan["command"] = self._floor_command(item, "turn_off")
                 continue
