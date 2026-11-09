@@ -8,6 +8,6 @@
   "integration_type": "service",
   "iot_class": "calculated",
   "requirements": [],
-  "version": "0.13.23",
+  "version": "0.13.24",
   "issue_tracker": "https://github.com/AAD-Automatisering/Zonentra/issues"
 }
