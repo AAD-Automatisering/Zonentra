@@ -44,6 +44,7 @@ class Zone:
     occupancy_entity: str | None = None
     calendar_entity: str | None = None
     floor_heating_limit: float = 16.0
+    floor_heating_follow_presets: bool = False
     preconditioning_max_minutes: float = 180.0
     preconditioning_buffer_minutes: float = 10.0
     preconditioning_heating_rate: float = 0.05  # °C/min baseline before learning
@@ -202,6 +203,12 @@ class Building:
         return frozenset(
             item.zone_id for item in self.equipment if item.kind == "floor_heating"
         ) - {item.zone_id for item in self.equipment if item.kind == "hvac"}
+
+    @cached_property
+    def floor_preset_zones(self) -> frozenset[str]:
+        return self.floor_only_zones & {
+            zone.id for zone in self.zones if zone.floor_heating_follow_presets
+        }
 
     @property
     def entity_ids(self) -> frozenset[str]:
@@ -365,6 +372,7 @@ def build_model(building_id: str, name: str, topology: dict[str, Any]) -> Buildi
                 "use_building_parameters",
                 "use_building_preconditioning",
                 "use_building_floor_heating",
+                "floor_heating_follow_presets",
                 "native_regulation",
             )
         ):

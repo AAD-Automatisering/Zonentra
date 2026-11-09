@@ -289,6 +289,7 @@ def multi(domain):
 
 ZONE_DEFAULTS = {
     "native_regulation": False,
+    "floor_heating_follow_presets": False,
     "weight": 1.0,
     "use_building_limits": True,
     "use_building_parameters": True,
@@ -365,6 +366,7 @@ ZONE_OPTION_SECTIONS = {
     ),
     "zone_floor_heating": (
         "floor_heating_entities",
+        "floor_heating_follow_presets",
         "use_building_floor_heating",
         *FLOOR_FIELDS,
     ),
@@ -383,6 +385,7 @@ def zone_section_fields(
     """Reuse the existing selectors, displaying just one room subject."""
     fields = {
         **zone_fields(groups),
+        vol.Optional("floor_heating_follow_presets"): selector.BooleanSelector(),
         **zone_parameter_fields(
             {**dict.fromkeys(ZONE_FLAGS, False), "sensor_validation": "update_based"}
         ),
@@ -391,11 +394,19 @@ def zone_section_fields(
     fields = {
         marker: value for marker, value in fields.items() if marker.schema in keys
     }
-    return (
-        applicable_fields(fields, {**dict.fromkeys(ZONE_FLAGS, True), **record})
-        if record is not None
-        else fields
-    )
+    if record is None:
+        return fields
+    if section == "zone_floor_heating":
+        can_follow = not record.get("indoor_units") and any(
+            entity_id.startswith("climate.")
+            for entity_id in record.get("floor_heating_entities", ())
+        )
+        if not can_follow:
+            fields.pop("floor_heating_follow_presets")
+        elif record.get("floor_heating_follow_presets"):
+            for key in ("use_building_floor_heating", *FLOOR_FIELDS):
+                fields.pop(key)
+    return applicable_fields(fields, {**dict.fromkeys(ZONE_FLAGS, True), **record})
 
 
 def zone_parameter_fields(record: dict) -> dict:
@@ -665,6 +676,12 @@ class ZoneOptionsFlow(ZoneFormMixin, OptionsFlow):
             for flag in ZONE_FLAGS:
                 if flag in ZONE_OPTION_SECTIONS[section]:
                     candidate.setdefault(flag, self.zone.get(flag, True))
+            if section == "zone_floor_heating" and candidate.get(
+                "floor_heating_follow_presets"
+            ):
+                for key in FLOOR_FIELDS:
+                    if key in self.zone:
+                        candidate.setdefault(key, self.zone[key])
             for flag, local_keys in (
                 (
                     "use_building_parameters",

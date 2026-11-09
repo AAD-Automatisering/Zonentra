@@ -36,8 +36,8 @@ Controleer eerst de sensoren en schakel daarna de gewenste regeling per ruimte i
 Zonwering heeft een eigen schakelaar en wordt niet door de HVAC-groepsstop geblokkeerd.
 Vloerverwarming heeft ook een eigen schakelaar. Koppel een climate-thermostaat
 met een gewenste kamertemperatuur. Deze houdt standaard een aparte ondergrens
-van **16 °C** aan; Comfort/Eco/Afwezig en agenda-voorbereiding blijven door de
-**airco** geregeld. De airco wacht niet op de vloer. De ondergrens is instelbaar
+van **16 °C** aan. In ruimtes met airco regelt de **airco** Comfort, Eco,
+Afwezig en agenda-voorbereiding. De airco wacht niet op de vloer. De ondergrens is instelbaar
 via centrale **Ruimteregeling**, met een afwijking per ruimte. Bij koeling wacht
 de airco op bevestigd uitgeschakelde vloerthermostaten. De vloer blijft uit
 zolang een airco in dezelfde ruimte op cool/dry staat. Uitschakelen van de
@@ -51,6 +51,15 @@ uitschakelen: dan verschijnt **Uitschakelen niet ondersteund** en blijft aircoko
 geblokkeerd zolang de vloer niet betrouwbaar uit meldt.
 De sensor **Controle opwarmvoortgang airco** signaleert langdurig onvoldoende opwarming;
 hij schakelt geen extra gasverwarming in.
+
+In een ruimte met alleen vloerverwarming kun je via **Configureren →
+Vloerverwarming → Volg voorinstellingen** de vloer het actieve verwarmingsdoel
+van Comfort, Eco of Afwezig laten volgen. Je kunt tijdelijk afwijken via de
+Zonentra-thermostaat. Voor eigen presettemperaturen zet je bij **Algemeen**
+**Centrale klimaatgrenzen gebruiken** uit en stel je op het ruimteapparaat
+**Comfort verwarmen tot**, **Eco verwarmen tot** en **Afwezig verwarmen tot** in.
+Met **Volg voorinstellingen** uit gebruikt de vloer het vaste vloerdoel.
+
 **Regenbeveiliging** staat standaard aan zodra een weerbron is gekoppeld. De
 actuele toestand van de centrale `weather`-entiteit wordt gebruikt, ook die van
 Pirate Weather. Bij regen/onweer/neerslag gaan ingeschakelde screens direct omhoog,

@@ -4,8 +4,11 @@ from dataclasses import replace
 from datetime import timedelta
 
 import pytest
+from homeassistant.data_entry_flow import FlowResultType
 from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers.entity_component import DATA_INSTANCES
+from homeassistant.setup import async_setup_component
 from homeassistant.util import dt as dt_util
 from homeassistant.util.unit_system import US_CUSTOMARY_SYSTEM
 
@@ -22,6 +25,7 @@ from tests.test_entry_layout import (
     setup_central,
     zone_options,
 )
+from tests.test_temperature_runtime import C, ReportingClimate
 from tests.test_thermostat_runtime import later, mock_climate
 
 FLOOR = "climate.floor"
@@ -177,12 +181,16 @@ async def test_floor_only_thermostat_exposes_heat_and_off(hass):
     thermostat = hass.states.get(climate_id)
     assert thermostat.state == "heat"
     assert thermostat.attributes["hvac_modes"] == ["heat", "off"]
+    assert thermostat.attributes["floor_heating_target_c"] == 16
+    assert "preset_modes" not in thermostat.attributes
+    assert "temperature" not in thermostat.attributes
     assert "target_temp_high" not in thermostat.attributes
     assert central.runtime_data.zone_demands["west"].reason == "thermostat_heat_only"
 
     for service, data in (
         ("set_hvac_mode", {"hvac_mode": "cool"}),
-        ("set_temperature", {"hvac_mode": "cool", "temperature": 24}),
+        ("set_preset_mode", {"preset_mode": "eco"}),
+        ("set_temperature", {"temperature": 24}),
     ):
         with pytest.raises(ServiceValidationError):
             await hass.services.async_call(
@@ -408,8 +416,11 @@ async def test_window_stops_floor_independent_of_group_switch(hass, freezer):
 
 
 @pytest.mark.parametrize("preset", ["comfort", "eco", "away"])
-async def test_floor_keeps_fixed_baseline_for_every_preset(hass, preset):
-    runtime, _, mocks = await setup_floor(hass)
+@pytest.mark.parametrize("units", [False, True])
+async def test_floor_keeps_fixed_baseline_for_every_preset(hass, preset, units):
+    runtime, _, mocks = await setup_floor(
+        hass, units=units, floor_heating_follow_presets=units
+    )
     runtime.set_thermostat("west", floor_regulation=True, preset=preset)
     await hass.async_block_till_done()
     assert floor_calls(mocks)[0].data["temperature"] == 16
@@ -476,11 +487,6 @@ async def test_final_guard_rechecks_disable_and_target_before_sending(hass):
 async def test_real_floor_service_quantization_and_confirmation(
     hass, native_unit, step, expected, system_fahrenheit
 ):
-    from homeassistant.helpers.entity_component import DATA_INSTANCES
-    from homeassistant.setup import async_setup_component
-
-    from tests.test_temperature_runtime import ReportingClimate
-
     if system_fahrenheit:
         hass.config.units = US_CUSTOMARY_SYSTEM
     assert await async_setup_component(hass, "climate", {})
@@ -510,8 +516,6 @@ async def test_real_floor_service_quantization_and_confirmation(
 
 
 async def test_local_floor_options_round_trip(hass):
-    from homeassistant.data_entry_flow import FlowResultType
-
     runtime, room, _ = await setup_floor(hass)
     flow = await hass.config_entries.options.async_init(room.entry_id)
     flow = await edit_zone_subject(
@@ -532,6 +536,82 @@ async def test_local_floor_options_round_trip(hass):
     central = hass.config_entries.async_get_entry(runtime.building.id)
     zone = central.runtime_data.building.zones[0]
     assert zone.floor_heating_limit == 15
+
+
+async def test_floor_follows_central_and_local_presets_and_manual_override(
+    hass, freezer
+):
+    assert await async_setup_component(hass, "climate", {})
+    source = ReportingClimate(C, 0.5, 5, 30)
+    await hass.data[DATA_INSTANCES]["climate"].async_add_entities([source])
+    set_states(hass, "west")
+    central = await setup_central(hass)
+    room = await add_zone(
+        hass,
+        zone_options(
+            "west",
+            floor_heating_entities=[source.entity_id],
+            use_building_floor_heating=False,
+            floor_heating_limit=15,
+        ),
+    )
+
+    async def configure(subject, values):
+        flow = await hass.config_entries.options.async_init(room.entry_id)
+        flow = await edit_zone_subject(hass, flow, subject, values)
+        assert flow["type"] == FlowResultType.MENU
+        flow = await hass.config_entries.options.async_configure(
+            flow["flow_id"], {"next_step_id": "finish"}
+        )
+        assert flow["type"] == FlowResultType.CREATE_ENTRY
+        await hass.async_block_till_done()
+
+    async def call(domain, service, unique_id, **data):
+        entity_id = er.async_get(hass).async_get_entity_id(
+            domain, DOMAIN, f"{room.entry_id}_{unique_id}"
+        )
+        await hass.services.async_call(
+            domain, service, {"entity_id": entity_id, **data}, blocking=True
+        )
+        await hass.async_block_till_done()
+
+    await configure(
+        "zone_floor_heating",
+        {
+            "floor_heating_entities": [source.entity_id],
+            "floor_heating_follow_presets": True,
+        },
+    )
+    assert room.options["floor_heating_limit"] == 15
+    await call("switch", "turn_on", "floor_regulation")
+    assert source.received == [22]
+    await call("climate", "set_preset_mode", "thermostat", preset_mode="eco")
+    assert (
+        source.received[-1] == central.runtime_data.building.settings.eco_heating_limit
+    )
+
+    await configure("zone_general", {"name": "West", "use_building_limits": False})
+    await call("number", "set_value", "eco_heating_limit", value=18.5)
+    assert source.received[-1] == 18.5
+    await call("climate", "set_temperature", "thermostat", temperature=20)
+    assert source.received[-1] == 20
+    await later(hass, freezer, minutes=31)
+    assert source.received[-1] == 18.5
+    await call("climate", "set_preset_mode", "thermostat", preset_mode="away")
+    assert (
+        source.received[-1] == central.runtime_data.building.settings.away_heating_limit
+    )
+
+    await configure(
+        "zone_floor_heating",
+        {
+            "floor_heating_entities": [source.entity_id],
+            "floor_heating_follow_presets": False,
+            "use_building_floor_heating": False,
+            "floor_heating_limit": 15,
+        },
+    )
+    assert source.received[-1] == 15
 
 
 async def test_unconfirmed_cooling_stop_remains_blocked_after_timeout(hass, freezer):

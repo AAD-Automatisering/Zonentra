@@ -1162,6 +1162,7 @@ class FloorHeatingSensor(ZonentraDiagnosticSensor):
         "unsupported_modes",
         "unsupported_setpoint",
         "target_out_of_range",
+        "heating_target_unknown",
         "cannot_stop",
         "room_temperature_unknown",
     ]

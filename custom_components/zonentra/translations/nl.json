@@ -461,13 +461,17 @@
       },
       "zone_floor_heating": {
         "title": "Vloerverwarming",
-        "description": "Koppel de vloerthermostaten. De lokale ondergrens geldt alleen wanneer centrale instellingen uit staan; bestaande lokale waarden blijven anders bewaard.",
+        "description": "Koppel de vloerthermostaten en kies hoe Zonentra de gewenste kamertemperatuur bepaalt.",
         "data": {
           "floor_heating_entities": "Vloerthermostaten met kamertemperatuursetpoint (climate; oude number alleen observatie)",
+          "floor_heating_follow_presets": "Volg voorinstellingen",
           "use_building_floor_heating": "Centrale instellingen voor vloerverwarming gebruiken",
           "floor_heating_limit": "Vloerverwarming: vaste ondergrens kamertemperatuur (°C; standaard 16)"
         },
-        "submit": "Toepassen en terug"
+        "submit": "Toepassen en terug",
+        "data_description": {
+          "floor_heating_follow_presets": "Gebruikt de verwarmingstemperatuur van Comfort, Eco of Afwezig en tijdelijke afwijkingen op de Zonentra-thermostaat. Zet bij Algemeen de centrale klimaatgrenzen uit om eigen presettemperaturen in te stellen."
+        }
       },
       "zone_screens": {
         "title": "Zonwering",
@@ -704,6 +708,7 @@
           "unsupported_entity": "Alleen observatie",
           "unsupported_modes": "Verwarmingsstand niet ondersteund",
           "unsupported_setpoint": "Kamertemperatuursetpoint ontbreekt",
+          "heating_target_unknown": "Verwarmingsdoel onbekend",
           "target_out_of_range": "Doel buiten apparaatgrenzen",
           "cannot_stop": "Uitschakelen niet ondersteund",
           "room_temperature_unknown": "Ruimtetemperatuur onbekend"

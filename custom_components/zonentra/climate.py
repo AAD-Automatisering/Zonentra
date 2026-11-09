@@ -94,7 +94,16 @@ class ZonentraThermostat(ZoneEntity, ClimateEntity):
         )
 
     @property
+    def _fixed_floor(self) -> bool:
+        return (
+            self._floor_only
+            and self._zone_id not in self.runtime.building.floor_preset_zones
+        )
+
+    @property
     def supported_features(self) -> ClimateEntityFeature:
+        if self._fixed_floor:
+            return ClimateEntityFeature.TURN_ON | ClimateEntityFeature.TURN_OFF
         if self._floor_only:
             return BASE_FEATURES & ~ClimateEntityFeature.TARGET_TEMPERATURE_RANGE
         return BASE_FEATURES
@@ -184,14 +193,12 @@ class ZonentraThermostat(ZoneEntity, ClimateEntity):
     @property
     def extra_state_attributes(self) -> dict:
         runtime = self.runtime
-        band, reason = runtime.zone_bands[self._zone_id]
-        snapshot = runtime.zone_snapshots[self._zone_id]
         demand = runtime.zone_demands[self._zone_id]
         zone = next(z for z in runtime.building.zones if z.id == self._zone_id)
         thermostat = self.thermostat
         units = _zone_units(runtime, self._zone_id)
         reported = sum(unit.activity is not None for unit in units)
-        return {
+        attrs = {
             "activity_source": (
                 "thermostat_off"
                 if thermostat.hvac_mode == "off"
@@ -207,6 +214,18 @@ class ZonentraThermostat(ZoneEntity, ClimateEntity):
                 self._zone_id, demand
             ).reason,
             "floor_regulation": thermostat.floor_regulation,
+            "zone_demand": demand.demand,
+            "zone_demand_reason": demand.reason,
+            "room_regulation": runtime.regulated(self._zone_id),
+            "window": runtime.windows.get(self._zone_id),
+            "safety": runtime.safety.get(self._zone_id, ("unknown",))[0],
+        }
+        if self._fixed_floor:
+            return {**attrs, "floor_heating_target_c": zone.floor_heating_limit}
+        band, reason = runtime.zone_bands[self._zone_id]
+        snapshot = runtime.zone_snapshots[self._zone_id]
+        return {
+            **attrs,
             "active_band": band,
             "active_band_reason": reason,
             "chosen_preset": thermostat.preset,
@@ -222,11 +241,6 @@ class ZonentraThermostat(ZoneEntity, ClimateEntity):
             else "thermostat"
             if thermostat.has_band
             else "zone",
-            "zone_demand": demand.demand,
-            "zone_demand_reason": demand.reason,
-            "room_regulation": runtime.regulated(self._zone_id),
-            "window": runtime.windows.get(self._zone_id),
-            "safety": runtime.safety.get(self._zone_id, ("unknown",))[0],
         }
 
     async def async_set_temperature(self, **kwargs) -> None:

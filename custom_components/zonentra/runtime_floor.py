@@ -81,8 +81,12 @@ class FloorRuntimeMixin:
         if _setpoint(attrs.get("temperature")) is None:
             return None, "unsupported_setpoint"
         zone = next(zone for zone in self.building.zones if zone.id == item.zone_id)
-        # A separate gas-saving room target, independent of comfort and agenda.
         target = zone.floor_heating_limit
+        if zone.id in self.building.floor_preset_zones:
+            heating_limit = self.zone_snapshots[zone.id].heating_limit
+            if heating_limit.quality != "valid":
+                return None, "heating_target_unknown"
+            target = heating_limit.value
         unit = self.hass.config.units.temperature_unit
         native_unit = unit
         entity = self._climate_entity(item.entity_id)
