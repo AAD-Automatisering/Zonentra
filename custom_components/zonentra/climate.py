@@ -28,6 +28,7 @@ from homeassistant.components.climate import (
 from homeassistant.const import ATTR_TEMPERATURE, UnitOfTemperature
 
 from .entity import ZoneEntity, zone_context
+from .floor_heating import floor_demand_percent
 from .thermostat import FLOOR_ONLY_MODES, PRESETS, UNIT_MODES, single_target
 
 BASE_FEATURES = (
@@ -159,13 +160,25 @@ class ZonentraThermostat(ZoneEntity, ClimateEntity):
     def target_temperature_high(self) -> float | None:
         return self.runtime.zone_snapshots[self._zone_id].cooling_limit.value
 
+    def _floor_demand(self):
+        zone = next(z for z in self.runtime.building.zones if z.id == self._zone_id)
+        if not zone.floor_demand_entity or not any(
+            item.zone_id == self._zone_id and item.kind == "floor_heating"
+            for item in self.runtime.building.equipment
+        ):
+            return False, None
+        return True, floor_demand_percent(
+            self.hass.states.get(zone.floor_demand_entity)
+        )
+
     @property
-    def hvac_action(self) -> HVACAction:
+    def hvac_action(self) -> HVACAction | None:
         mode = self.thermostat.hvac_mode
         if mode == "off":
             return HVACAction.OFF
         runtime = self.runtime
         units = _zone_units(runtime, self._zone_id)
+        configured, floor_demand = self._floor_demand()
         actions = {
             unit.reported_action
             if unit.activity is not None
@@ -179,7 +192,10 @@ class ZonentraThermostat(ZoneEntity, ClimateEntity):
                 "off": "off",
             }.get(unit.selected_mode, "idle")
             for unit in units
+            if not configured or unit.equipment_id not in runtime.floor_observations
         }
+        if configured and floor_demand is not None:
+            actions.add("heating" if floor_demand > 0 else "idle")
         if actions & {"heating", "preheating", "defrosting"}:
             return HVACAction.HEATING
         if "cooling" in actions:
@@ -188,6 +204,8 @@ class ZonentraThermostat(ZoneEntity, ClimateEntity):
             return HVACAction.DRYING
         if "fan" in actions:
             return HVACAction.FAN
+        if configured and floor_demand is None:
+            return None
         return HVACAction.IDLE
 
     @property
@@ -198,10 +216,22 @@ class ZonentraThermostat(ZoneEntity, ClimateEntity):
         thermostat = self.thermostat
         units = _zone_units(runtime, self._zone_id)
         reported = sum(unit.activity is not None for unit in units)
+        configured, floor_demand = self._floor_demand()
+        aircos = [
+            unit
+            for unit in units
+            if unit.equipment_id not in runtime.floor_observations
+        ]
         attrs = {
             "activity_source": (
                 "thermostat_off"
                 if thermostat.hvac_mode == "off"
+                else "unavailable"
+                if configured and floor_demand is None and not aircos
+                else "mixed"
+                if configured and aircos
+                else "floor_demand_sensor"
+                if configured
                 else "unavailable"
                 if not units
                 else "reported"
@@ -214,6 +244,7 @@ class ZonentraThermostat(ZoneEntity, ClimateEntity):
                 self._zone_id, demand
             ).reason,
             "floor_regulation": thermostat.floor_regulation,
+            "floor_valve_percent": floor_demand if configured else None,
             "zone_demand": demand.demand,
             "zone_demand_reason": demand.reason,
             "room_regulation": runtime.regulated(self._zone_id),

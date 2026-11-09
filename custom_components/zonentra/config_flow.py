@@ -330,6 +330,7 @@ def zone_fields(groups: list[dict]) -> dict:
         vol.Optional("use_building_floor_heating"): selector.BooleanSelector(),
         vol.Optional("contact_entities"): multi(list(CONTACT_DOMAINS)),
         vol.Optional("floor_heating_entities"): multi(["climate", "number"]),
+        vol.Optional("floor_demand_entity"): entity_selector("sensor"),
         vol.Optional("shading_entities"): multi("cover"),
         vol.Optional("facade"): selector.SelectSelector(
             {
@@ -370,6 +371,7 @@ ZONE_OPTION_SECTIONS = {
     ),
     "zone_floor_heating": (
         "floor_heating_entities",
+        "floor_demand_entity",
         "floor_heating_follow_presets",
         "use_building_floor_heating",
         *FLOOR_FIELDS,
@@ -916,6 +918,7 @@ class ZonentraOptionsFlow(OptionsFlowWithReload):
                     vol.Optional("use_building_limits"): selector.BooleanSelector(),
                     vol.Optional("use_building_parameters"): selector.BooleanSelector(),
                     vol.Optional("native_regulation"): selector.BooleanSelector(),
+                    vol.Optional("floor_demand_entity"): entity_selector("sensor"),
                     vol.Optional("occupancy_entity"): entity_selector("binary_sensor"),
                     vol.Optional("calendar_entity"): entity_selector("calendar"),
                     vol.Optional(

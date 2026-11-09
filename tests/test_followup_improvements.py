@@ -57,6 +57,7 @@ def test_thermostat_prefers_reported_action(selected, reported, expected):
     )
     room = SimpleNamespace(
         _zone_id="room",
+        _floor_demand=lambda: (False, None),
         thermostat=SimpleNamespace(hvac_mode="heat_cool"),
         runtime=SimpleNamespace(
             building=SimpleNamespace(equipment=(item,)),

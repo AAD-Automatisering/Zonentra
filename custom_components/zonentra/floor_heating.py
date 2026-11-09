@@ -1,5 +1,6 @@
 """Observe inadequate room warming without increasing gas heating."""
 
+import math
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
@@ -59,3 +60,19 @@ def heating_progress(previous, now, *, temperature, target, reported_at, watchin
         now + timedelta(minutes=WATCH_MINUTES),
         rise,
     )
+
+
+def floor_demand_percent(state):
+    """Read an optional 0–100% heating-demand signal without assuming bad data."""
+    if state is None or state.state in ("unknown", "unavailable"):
+        return None
+    if state.attributes.get("restored") or state.attributes.get("assumed_state"):
+        return None
+    unit = state.attributes.get("unit_of_measurement")
+    if unit not in (None, "%"):
+        return None
+    try:
+        value = float(state.state)
+    except TypeError, ValueError:
+        return None
+    return value if math.isfinite(value) and 0 <= value <= 100 else None

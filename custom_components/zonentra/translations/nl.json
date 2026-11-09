@@ -40,10 +40,12 @@
           "calendar_entity": "Ruimteagenda (optioneel; adaptief verwarmen/koelen vóór afspraken)",
           "use_building_preconditioning": "Gebruik centrale instellingen voor afspraakvoorbereiding",
           "use_building_floor_heating": "Centrale instellingen voor vloerverwarming gebruiken",
-          "native_regulation": "Proef: airco tijdens comfort zelf laten regelen"
+          "native_regulation": "Proef: airco tijdens comfort zelf laten regelen",
+          "floor_demand_entity": "Stelgrootte verdelergroep in % (optioneel)"
         },
         "data_description": {
-          "native_regulation": "Alleen voor deze ruimte. Een draaiende airco blijft bij bereikte temperatuur ingeschakeld, met rustige temperatuurcorrecties. Eco/afwezig, open ramen, handmatige bediening en groepsbeveiliging blijven gelden. De ventilatorregeling verandert niet. Uit = bestaande regeling."
+          "native_regulation": "Alleen voor deze ruimte. Een draaiende airco blijft bij bereikte temperatuur ingeschakeld, met rustige temperatuurcorrecties. Eco/afwezig, open ramen, handmatige bediening en groepsbeveiliging blijven gelden. De ventilatorregeling verandert niet. Uit = bestaande regeling.",
+          "floor_demand_entity": "0% wordt getoond als geen warmtevraag en een waarde boven 0% als verwarmen. Dit volgt de gemelde stelgrootte van de verdelergroep."
         }
       },
       "zone_parameters": {
@@ -365,11 +367,13 @@
           "calendar_entity": "Ruimteagenda (optioneel; adaptief verwarmen/koelen vóór afspraken)",
           "use_building_preconditioning": "Gebruik centrale instellingen voor afspraakvoorbereiding",
           "use_building_floor_heating": "Centrale instellingen voor vloerverwarming gebruiken",
-          "native_regulation": "Proef: airco tijdens comfort zelf laten regelen"
+          "native_regulation": "Proef: airco tijdens comfort zelf laten regelen",
+          "floor_demand_entity": "Stelgrootte verdelergroep in % (optioneel)"
         },
         "submit": "Opslaan",
         "data_description": {
-          "native_regulation": "Alleen voor deze ruimte. Een draaiende airco blijft bij bereikte temperatuur ingeschakeld, met rustige temperatuurcorrecties. Eco/afwezig, open ramen, handmatige bediening en groepsbeveiliging blijven gelden. De ventilatorregeling verandert niet. Uit = bestaande regeling."
+          "native_regulation": "Alleen voor deze ruimte. Een draaiende airco blijft bij bereikte temperatuur ingeschakeld, met rustige temperatuurcorrecties. Eco/afwezig, open ramen, handmatige bediening en groepsbeveiliging blijven gelden. De ventilatorregeling verandert niet. Uit = bestaande regeling.",
+          "floor_demand_entity": "0% wordt getoond als geen warmtevraag en een waarde boven 0% als verwarmen. Dit volgt de gemelde stelgrootte van de verdelergroep."
         }
       },
       "zone_parameters": {
@@ -468,11 +472,13 @@
           "floor_heating_entities": "Vloerthermostaten met kamertemperatuursetpoint (climate; oude number alleen observatie)",
           "floor_heating_follow_presets": "Volg voorinstellingen",
           "use_building_floor_heating": "Centrale instellingen voor vloerverwarming gebruiken",
-          "floor_heating_limit": "Vloerverwarming: vaste ondergrens kamertemperatuur (°C; standaard 16)"
+          "floor_heating_limit": "Vloerverwarming: vaste ondergrens kamertemperatuur (°C; standaard 16)",
+          "floor_demand_entity": "Stelgrootte verdelergroep in % (optioneel)"
         },
         "submit": "Toepassen en terug",
         "data_description": {
-          "floor_heating_follow_presets": "Gebruikt de verwarmingstemperatuur van Comfort, Eco of Afwezig en tijdelijke afwijkingen op de Zonentra-thermostaat. Zet bij Algemeen de centrale klimaatgrenzen uit om eigen presettemperaturen in te stellen."
+          "floor_heating_follow_presets": "Gebruikt de verwarmingstemperatuur van Comfort, Eco of Afwezig en tijdelijke afwijkingen op de Zonentra-thermostaat. Zet bij Algemeen de centrale klimaatgrenzen uit om eigen presettemperaturen in te stellen.",
+          "floor_demand_entity": "0% wordt getoond als geen warmtevraag en een waarde boven 0% als verwarmen. Dit volgt de gemelde stelgrootte van de verdelergroep."
         }
       },
       "zone_screens": {

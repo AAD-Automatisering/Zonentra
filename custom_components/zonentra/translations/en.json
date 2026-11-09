@@ -40,10 +40,12 @@
           "calendar_entity": "Room calendar (optional; adaptive heating/cooling before meetings)",
           "use_building_preconditioning": "Use central meeting preparation settings",
           "use_building_floor_heating": "Use central floor heating settings",
-          "native_regulation": "Trial: let the air conditioner regulate during comfort"
+          "native_regulation": "Trial: let the air conditioner regulate during comfort",
+          "floor_demand_entity": "Manifold circuit control value in % (optional)"
         },
         "data_description": {
-          "native_regulation": "Only this room. A running air conditioner stays enabled at the target, with slower temperature corrections. Eco/away, open windows, manual operation and group protection still apply. Fan control is unchanged. Off = existing control."
+          "native_regulation": "Only this room. A running air conditioner stays enabled at the target, with slower temperature corrections. Eco/away, open windows, manual operation and group protection still apply. Fan control is unchanged. Off = existing control.",
+          "floor_demand_entity": "0% is displayed as no heat demand and a value above 0% as heating. This follows the reported control value of the manifold circuit."
         }
       },
       "zone_parameters": {
@@ -365,11 +367,13 @@
           "calendar_entity": "Room calendar (optional; adaptive heating/cooling before meetings)",
           "use_building_preconditioning": "Use central meeting preparation settings",
           "use_building_floor_heating": "Use central floor heating settings",
-          "native_regulation": "Trial: let the air conditioner regulate during comfort"
+          "native_regulation": "Trial: let the air conditioner regulate during comfort",
+          "floor_demand_entity": "Manifold circuit control value in % (optional)"
         },
         "submit": "Save",
         "data_description": {
-          "native_regulation": "Only this room. A running air conditioner stays enabled at the target, with slower temperature corrections. Eco/away, open windows, manual operation and group protection still apply. Fan control is unchanged. Off = existing control."
+          "native_regulation": "Only this room. A running air conditioner stays enabled at the target, with slower temperature corrections. Eco/away, open windows, manual operation and group protection still apply. Fan control is unchanged. Off = existing control.",
+          "floor_demand_entity": "0% is displayed as no heat demand and a value above 0% as heating. This follows the reported control value of the manifold circuit."
         }
       },
       "zone_parameters": {
@@ -468,11 +472,13 @@
           "floor_heating_entities": "Floor thermostats with room temperature setpoint (climate; legacy number observation only)",
           "floor_heating_follow_presets": "Follow presets",
           "use_building_floor_heating": "Use central floor heating settings",
-          "floor_heating_limit": "Floor heating: fixed minimum room temperature (°C; default 16)"
+          "floor_heating_limit": "Floor heating: fixed minimum room temperature (°C; default 16)",
+          "floor_demand_entity": "Manifold circuit control value in % (optional)"
         },
         "submit": "Apply and return",
         "data_description": {
-          "floor_heating_follow_presets": "Uses the heating target for Comfort, Eco or Away and temporary adjustments on the Zonentra thermostat. Disable central climate limits under General to set your own preset temperatures."
+          "floor_heating_follow_presets": "Uses the heating target for Comfort, Eco or Away and temporary adjustments on the Zonentra thermostat. Disable central climate limits under General to set your own preset temperatures.",
+          "floor_demand_entity": "0% is displayed as no heat demand and a value above 0% as heating. This follows the reported control value of the manifold circuit."
         }
       },
       "zone_screens": {

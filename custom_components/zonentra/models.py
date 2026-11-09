@@ -22,6 +22,7 @@ from .shading import FACADES
 
 ZONE_ENTITY_FIELDS = (
     "temperature_entity",
+    "floor_demand_entity",
     "occupancy_entity",
     "calendar_entity",
     "vane_entity",
@@ -42,6 +43,7 @@ class Zone:
     id: str
     name: str
     temperature_entity: str | None = None
+    floor_demand_entity: str | None = None
     occupancy_entity: str | None = None
     calendar_entity: str | None = None
     floor_heating_limit: float = 16.0

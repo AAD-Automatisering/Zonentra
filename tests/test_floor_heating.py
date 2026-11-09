@@ -963,3 +963,108 @@ async def test_floor_only_shows_heating_presets_and_restores_cooling_for_airco(h
     for key in ("comfort_cooling_limit", "eco_cooling_limit", "away_cooling_limit"):
         assert number(key) is not None
     assert central_entry(hass).runtime_data.thermostat("west").heating_limit == 25
+
+
+async def test_floor_demand_sensor_reports_requested_heating_without_changing_floor_control(
+    hass,
+):
+    demand_sensor = "sensor.wi_stelgrootte_berging"
+    hass.states.async_set(demand_sensor, "0", {"unit_of_measurement": "%"})
+    runtime, room, mocks = await setup_floor(hass, floor_demand_entity=demand_sensor)
+    runtime.set_thermostat("west", floor_regulation=True)
+    await report(hass, "heat", hvac_action=None)
+    climate = er.async_get(hass).async_get_entity_id(
+        "climate", DOMAIN, f"{room.entry_id}_thermostat"
+    )
+    assert hass.states.get(climate).attributes["hvac_action"] == "idle"
+    assert (
+        hass.states.get(climate).attributes["activity_source"] == "floor_demand_sensor"
+    )
+    calls_before = len(floor_calls(mocks))
+    hass.states.async_set(demand_sensor, "40", {"unit_of_measurement": "%"})
+    await hass.async_block_till_done()
+    attrs = hass.states.get(climate).attributes
+    assert attrs["hvac_action"] == "heating"
+    assert attrs["floor_valve_percent"] == 40
+    assert len(floor_calls(mocks)) == calls_before
+    hass.states.async_set(demand_sensor, "0", {"unit_of_measurement": "%"})
+    await hass.async_block_till_done()
+    assert hass.states.get(climate).attributes["hvac_action"] == "idle"
+
+
+@pytest.mark.parametrize(
+    "state,attrs",
+    [
+        ("unknown", {"unit_of_measurement": "%"}),
+        ("unavailable", {"unit_of_measurement": "%"}),
+        ("-1", {"unit_of_measurement": "%"}),
+        ("101", {"unit_of_measurement": "%"}),
+        ("nan", {"unit_of_measurement": "%"}),
+        ("25", {"unit_of_measurement": "°C"}),
+        ("25", {"unit_of_measurement": "%", "restored": True}),
+        ("25", {"unit_of_measurement": "%", "assumed_state": True}),
+    ],
+)
+async def test_invalid_floor_demand_does_not_claim_idle_or_heating(hass, state, attrs):
+    sensor = "sensor.wi_stelgrootte_berging"
+    hass.states.async_set(sensor, state, attrs)
+    runtime, room, _ = await setup_floor(hass, floor_demand_entity=sensor)
+    runtime.set_thermostat("west", floor_regulation=True)
+    await report(hass, "heat", hvac_action=None)
+    climate = er.async_get(hass).async_get_entity_id(
+        "climate", DOMAIN, f"{room.entry_id}_thermostat"
+    )
+    attributes = hass.states.get(climate).attributes
+    assert attributes.get("hvac_action") is None
+    assert attributes["activity_source"] == "unavailable"
+    assert attributes["floor_valve_percent"] is None
+
+
+async def test_floor_demand_sensor_can_be_chosen_in_room_settings(hass):
+    sensor = "sensor.wi_stelgrootte_berging"
+    hass.states.async_set(sensor, "0", {"unit_of_measurement": "%"})
+    runtime, room, _ = await setup_floor(hass)
+    flow = await hass.config_entries.options.async_init(room.entry_id)
+    flow = await edit_zone_subject(
+        hass,
+        flow,
+        "zone_floor_heating",
+        {
+            "floor_heating_entities": [FLOOR],
+            "floor_demand_entity": sensor,
+            "use_building_floor_heating": True,
+        },
+    )
+    assert flow["type"] == FlowResultType.MENU
+    await hass.config_entries.options.async_configure(
+        flow["flow_id"], {"next_step_id": "finish"}
+    )
+    await hass.async_block_till_done()
+    runtime = central_entry(hass).runtime_data
+    assert runtime.building.zones[0].floor_demand_entity == sensor
+    assert sensor in runtime.building.entity_ids
+    diagnostic = await async_get_config_entry_diagnostics(hass, room)
+    assert sensor not in str(diagnostic)
+
+
+async def test_floor_demand_and_airco_actions_are_combined(hass):
+    sensor = "sensor.wi_stelgrootte_berging"
+    hass.states.async_set(sensor, "30", {"unit_of_measurement": "%"})
+    runtime, room, _ = await setup_floor(hass, units=True, floor_demand_entity=sensor)
+    runtime.set_thermostat("west", regulation=True, floor_regulation=True)
+    await report(hass, "heat", hvac_action=None)
+    hass.states.async_set(
+        "climate.west_ac", "heat", {"temperature": 22, "hvac_action": "idle"}
+    )
+    await hass.async_block_till_done()
+    climate = er.async_get(hass).async_get_entity_id(
+        "climate", DOMAIN, f"{room.entry_id}_thermostat"
+    )
+    assert hass.states.get(climate).attributes["hvac_action"] == "heating"
+    assert hass.states.get(climate).attributes["activity_source"] == "mixed"
+    hass.states.async_set(sensor, "unavailable", {"unit_of_measurement": "%"})
+    hass.states.async_set(
+        "climate.west_ac", "heat", {"temperature": 22, "hvac_action": "heating"}
+    )
+    await hass.async_block_till_done()
+    assert hass.states.get(climate).attributes["hvac_action"] == "heating"
