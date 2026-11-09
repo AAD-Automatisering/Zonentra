@@ -264,9 +264,15 @@ class ZonentraThermostat(ZoneEntity, ClimateEntity):
             "manual_until": thermostat.manual_until,
             "fan_until": thermostat.fan_until,
             "comfort_heating_limit": runtime.comfort[self._zone_id][0].value,
-            "comfort_cooling_limit": runtime.comfort[self._zone_id][1].value,
             "active_heating_limit": snapshot.heating_limit.value,
-            "active_cooling_limit": snapshot.cooling_limit.value,
+            **(
+                {}
+                if self._floor_only
+                else {
+                    "comfort_cooling_limit": runtime.comfort[self._zone_id][1].value,
+                    "active_cooling_limit": snapshot.cooling_limit.value,
+                }
+            ),
             "comfort_source": "building"
             if zone.use_building_limits
             else "thermostat"

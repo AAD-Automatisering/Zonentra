@@ -1068,3 +1068,21 @@ async def test_floor_demand_and_airco_actions_are_combined(hass):
     )
     await hass.async_block_till_done()
     assert hass.states.get(climate).attributes["hvac_action"] == "heating"
+
+
+@pytest.mark.parametrize("units", [False, True])
+async def test_climate_only_exposes_cooling_limits_when_airco_is_linked(hass, units):
+    runtime, room, _ = await setup_floor(
+        hass, units=units, floor_heating_follow_presets=not units
+    )
+    climate = er.async_get(hass).async_get_entity_id(
+        "climate", DOMAIN, f"{room.entry_id}_thermostat"
+    )
+    attributes = hass.states.get(climate).attributes
+    assert attributes["comfort_heating_limit"] == runtime.comfort["west"][0].value
+    assert (
+        attributes["active_heating_limit"]
+        == runtime.zone_snapshots["west"].heating_limit.value
+    )
+    assert ("comfort_cooling_limit" in attributes) is units
+    assert ("active_cooling_limit" in attributes) is units
