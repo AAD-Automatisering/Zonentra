@@ -279,8 +279,8 @@ Werk bij via HACS, herstart Home Assistant en herlaad de browser.
   blijven beschikbaar in Home Assistant.
 - **Vóór 0.7:** houd rekening met de standaard ingeschakelde actieve standregeling;
   zet bestaande automations voor de groepsmodus uit voordat Zonentra die overneemt.
-- **Vóór 0.6:** een oud enkel configuratie-item blijft alleen simuleren. Noteer de
-  instellingen, vervang het door een centrale configuratie met aparte ruimtes en
+- **Vóór 0.6:** een oud enkel configuratie-item wordt niet meer ondersteund. Noteer
+  de instellingen, vervang het door een centrale configuratie met aparte ruimtes en
   pas verwijzingen naar gewijzigde entity-ID's aan.
 
 ## Builds en versies

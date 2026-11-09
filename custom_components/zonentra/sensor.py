@@ -42,24 +42,14 @@ async def async_setup_entry(
 
 
 def _building_entities(entry) -> list:
-    """Legacy entries keep every entity; central entries keep building/groups."""
+    """Building and group sensors owned by the central entry."""
     runtime = entry.runtime_data
-    legacy = entry_type(entry) == "legacy"
-    hvac = [item for item in runtime.building.equipment if item.kind == "hvac"]
     groups = runtime.building.groups
     entities = [ZonentraStatusSensor(entry)]
-    if legacy:
-        entities.extend(
-            ZoneDemandSensor(entry, zone) for zone in runtime.building.zones
-        )
     entities.extend(GroupModeSensor(entry, group) for group in groups)
-    if legacy:
-        entities.extend(IndoorUnitSensor(entry, item) for item in hvac)
     entities.extend(DerivedGroupModeSensor(entry, group) for group in groups)
-    if legacy:
-        entities.extend(UnitControlSensor(entry, item) for item in hvac)
     entities.extend(GroupCoordinationSensor(entry, group) for group in groups)
-    if not legacy and runtime.building.settings.weather_entity:
+    if runtime.building.settings.weather_entity:
         entities.extend(
             [
                 ForecastTemperatureSensor(entry, "maximum"),

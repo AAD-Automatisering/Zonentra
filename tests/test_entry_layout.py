@@ -307,7 +307,7 @@ async def test_zone_without_central_configuration_fails(hass):
     assert entry.state is ConfigEntryState.SETUP_ERROR
 
 
-async def test_legacy_entry_works_and_raises_repair_issue(hass, topology):
+async def test_legacy_entry_is_rejected_without_changing_options(hass, topology):
     hass.states.async_set("sensor.office_temperature", "20", CELSIUS)
     entry = MockConfigEntry(
         domain=DOMAIN,
@@ -317,14 +317,36 @@ async def test_legacy_entry_works_and_raises_repair_issue(hass, topology):
         version=3,
     )
     entry.add_to_hass(hass)
-    assert await hass.config_entries.async_setup(entry.entry_id)
+    assert not await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
+    assert entry.state is ConfigEntryState.SETUP_ERROR
+    assert entry.options == topology
     issue_id = f"legacy_configuration_{entry.entry_id}"
-    assert ir.async_get(hass).async_get_issue(DOMAIN, issue_id) is not None
-    assert entity(hass, f"{entry.entry_id}_zone_office_demand")  # Unchanged IDs.
+    ir.async_create_issue(
+        hass,
+        DOMAIN,
+        issue_id,
+        is_fixable=False,
+        severity=ir.IssueSeverity.WARNING,
+        translation_key="legacy_configuration",
+    )
     assert await hass.config_entries.async_remove(entry.entry_id)
     await hass.async_block_till_done()
     assert ir.async_get(hass).async_get_issue(DOMAIN, issue_id) is None
+
+
+async def test_legacy_entry_is_not_migrated(hass, topology):
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title="Office",
+        data={"name": "Office"},
+        options=topology,
+        version=2,
+    )
+    entry.add_to_hass(hass)
+    assert not await hass.config_entries.async_setup(entry.entry_id)
+    assert entry.version == 2
+    assert entry.options == topology
 
 
 async def test_zone_diagnostics_are_redacted(hass):

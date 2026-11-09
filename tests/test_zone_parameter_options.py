@@ -26,9 +26,7 @@ REMOVED = {"heating_limit_entity": HEAT, "cooling_limit_entity": COOL}
 
 def test_limit_entities_are_absent_from_all_parameter_forms():
     for limits in (False, True):
-        assert not set(REMOVED).intersection(
-            key.schema for key in building_fields(limits)
-        )
+        assert not set(REMOVED).intersection(key.schema for key in building_fields())
         for parameters in (False, True):
             fields = zone_parameter_fields(
                 {"use_building_limits": limits, "use_building_parameters": parameters}

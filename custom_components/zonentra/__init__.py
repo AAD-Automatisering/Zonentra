@@ -2,9 +2,7 @@
 
 Entry layout (0.6, like Versatile Thermostat): one central configuration entry
 owns the building runtime; each zone entry adds a room. Zone entries never
-calculate anything themselves: their sensors read the central runtime. The
-pre-0.6 single entry ("legacy") keeps working, is deprecated and raises a
-repair issue asking to recreate it as central configuration plus zones.
+calculate anything themselves: their sensors read the central runtime.
 """
 
 from datetime import timedelta
@@ -30,7 +28,6 @@ from .runtime_bookings import CALENDAR_REFRESH_MINUTES
 from .topology import CENTRAL, ENTRY_TYPE, ZONE, assemble
 
 ZonentraConfigEntry = ConfigEntry[BuildingRuntime]
-PLATFORMS = [Platform.SENSOR]
 CENTRAL_PLATFORMS = [Platform.NUMBER, Platform.SENSOR, Platform.SWITCH]
 # 0.9: every zone gets a Zonentra thermostat, like Versatile Thermostat.
 ZONE_PLATFORMS = [
@@ -42,9 +39,7 @@ ZONE_PLATFORMS = [
 
 
 def platforms(entry: ConfigEntry) -> list[Platform]:
-    return {CENTRAL: CENTRAL_PLATFORMS, ZONE: ZONE_PLATFORMS}.get(
-        entry_type(entry), PLATFORMS
-    )
+    return {CENTRAL: CENTRAL_PLATFORMS, ZONE: ZONE_PLATFORMS}[entry_type(entry)]
 
 
 async def _thermostat_state(hass: HomeAssistant, entry: ConfigEntry):
@@ -66,8 +61,8 @@ async def _thermostat_state(hass: HomeAssistant, entry: ConfigEntry):
     return stores[entry.entry_id], caches[entry.entry_id]
 
 
-def entry_type(entry: ConfigEntry) -> str:
-    return entry.data.get(ENTRY_TYPE, "legacy")
+def entry_type(entry: ConfigEntry) -> str | None:
+    return entry.data.get(ENTRY_TYPE)
 
 
 def central_entry(hass: HomeAssistant) -> ConfigEntry | None:
@@ -120,40 +115,36 @@ def central_topology(
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ZonentraConfigEntry) -> bool:
-    """Set up a central, zone or legacy entry."""
+    """Set up a central configuration or room entry."""
+    kind = entry_type(entry)
+    if kind not in (CENTRAL, ZONE):
+        raise ConfigEntryError(
+            "This older Zonentra configuration is no longer supported. "
+            "Set up a central configuration and separate rooms."
+        )
     options = migrate_options(dict(entry.options))
     if options != dict(entry.options):
         hass.config_entries.async_update_entry(entry, options=options)
-    kind = entry_type(entry)
     if kind == ZONE:
         return await _async_setup_zone(hass, entry)
     try:
-        topology = (
-            central_topology(hass, entry) if kind == CENTRAL else dict(entry.options)
-        )
+        topology = central_topology(hass, entry)
         building = build_model(entry.entry_id, entry.data["name"], topology)
     except (ValueError, KeyError, TypeError) as err:
         raise ConfigEntryError("Invalid Zonentra topology") from err
-    if kind == "legacy":
-        ir.async_create_issue(
-            hass,
-            DOMAIN,
-            f"legacy_configuration_{entry.entry_id}",
-            is_fixable=False,
-            severity=ir.IssueSeverity.WARNING,
-            translation_key="legacy_configuration",
-            translation_placeholders={"name": entry.title},
-        )
     registry = er.async_get(hass)
-    for entity_id in building.entity_ids:
-        source = registry.async_get(entity_id)
-        if source and source.platform == DOMAIN:
-            raise ConfigEntryError(
-                "Zonentra diagnostic entities cannot be source inputs"
-            )
-    runtime = entry.runtime_data = BuildingRuntime(
-        hass, building, active=kind == CENTRAL
+    invalid_sources = sorted(
+        entity_id
+        for entity_id in building.entity_ids
+        if (source := registry.async_get(entity_id)) and source.platform == DOMAIN
     )
+    if invalid_sources:
+        raise ConfigEntryError(
+            f"Zonentra entities cannot be used as source inputs: "
+            f"{', '.join(invalid_sources)}. Replace or clear these sources in the "
+            "central configuration or the affected zone, then reload Zonentra."
+        )
+    runtime = entry.runtime_data = BuildingRuntime(hass, building, active=True)
     if kind == CENTRAL:
         # The last applied outdoor-stand per group survives restarts.
         runtime.mode_store = Store(hass, 1, f"{DOMAIN}.{entry.entry_id}.mode_control")
@@ -303,7 +294,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ZonentraConfigEntry) ->
 
 
 async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """A removed zone leaves the building; a removed legacy entry its issue."""
+    """A removed zone leaves the building; a central entry releases its stores."""
     kind = entry_type(entry)
     if kind == ZONE:
         central = central_entry(hass)
@@ -317,13 +308,13 @@ async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
             await store.async_remove()
         if store := data.get("screen_stores", {}).pop(entry.entry_id, None):
             await store.async_remove()
-    elif kind == "legacy":
+    else:
         ir.async_delete_issue(hass, DOMAIN, f"legacy_configuration_{entry.entry_id}")
 
 
 async def async_migrate_entry(hass: HomeAssistant, entry: ZonentraConfigEntry) -> bool:
     """Upgrade 0.1/0.2 config entries without changing room policy or identities."""
-    if entry.version > 3:
+    if entry_type(entry) not in (CENTRAL, ZONE) or entry.version > 3:
         return False
     if entry.version < 3:
         hass.config_entries.async_update_entry(

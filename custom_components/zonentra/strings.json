@@ -93,10 +93,7 @@
         "title": "Building topology",
         "description": "Edits remain provisional until Save. Closing the dialog discards them.",
         "menu_options": {
-          "building": "Central configuration",
-          "zone": "Add or edit a zone",
           "group": "Add or edit an outdoor unit group",
-          "equipment": "Add or edit equipment",
           "general": "General",
           "presence": "Presence",
           "regulation": "Room regulation",
@@ -196,46 +193,6 @@
         },
         "submit": "Apply and return"
       },
-      "zone": {
-        "title": "Zone",
-        "data": {
-          "record": "Select existing or add new"
-        },
-        "submit": "Next"
-      },
-      "zone_details": {
-        "title": "Zone",
-        "description": "Zones use the central configuration by default. Disable a building choice and press Next to enter local values. Existing local values remain available when switching back. This legacy configuration calculates plans; active control uses central configuration and zone entries.",
-        "data": {
-          "name": "Name",
-          "delete": "Delete this record",
-          "temperature_entity": "Room temperature sensor",
-          "occupancy_entity": "Motion sensor (optional; without motion the zone uses the eco band)",
-          "heating_limit": "Heating limit (°C)",
-          "cooling_limit": "Cooling limit (°C)",
-          "contact_entities": "Window and door contacts or covers (optional)",
-          "weight": "Zone weight (optional, default 1)",
-          "hysteresis": "Temperature hysteresis (°C)",
-          "sensor_validation": "Sensor validation (state_based = default; update_based only for periodically reporting sensors)",
-          "max_age_seconds": "Maximum update age for update_based (seconds; ignored by state_based)",
-          "group_id": "Outdoor unit group (optional)",
-          "use_building_limits": "Use building climate limits",
-          "use_building_parameters": "Use building regulation parameters",
-          "calendar_entity": "Room calendar (optional; adaptive heating/cooling before meetings)",
-          "preconditioning_max_minutes": "Maximum preparation time (minutes; default 180)",
-          "preconditioning_buffer_minutes": "Preparation safety margin (minutes; default 10)",
-          "preconditioning_heating_rate": "Initial heating rate (°C/min; default 0.05, adjusted for outdoor temperature)",
-          "preconditioning_cooling_rate": "Initial cooling rate (°C/min; default 0.05, adjusted for outdoor temperature)",
-          "use_building_preconditioning": "Use central meeting preparation settings",
-          "use_building_floor_heating": "Use central floor heating settings",
-          "floor_heating_limit": "Floor heating: fixed minimum room temperature (°C; default 16)",
-          "native_regulation": "Trial: let the air conditioner regulate during comfort"
-        },
-        "submit": "Apply and return",
-        "data_description": {
-          "native_regulation": "Only this room. A running air conditioner stays enabled at the target, with slower temperature corrections. Eco/away, open windows, manual operation and group protection still apply. Fan control is unchanged. Off = existing control."
-        }
-      },
       "group": {
         "title": "Outdoor unit group",
         "data": {
@@ -256,142 +213,6 @@
           "max_age_seconds": "Maximum feedback age (seconds; 0 = disabled)"
         },
         "submit": "Apply and return"
-      },
-      "equipment": {
-        "title": "Equipment",
-        "data": {
-          "record": "Select existing or add new"
-        },
-        "submit": "Next"
-      },
-      "equipment_details": {
-        "title": "Equipment",
-        "description": "Register each indoor unit (an existing climate entity) as HVAC equipment in its zone; several units per zone and per outdoor unit group are supported. Optional links can be cleared. This legacy configuration observes equipment and calculates plans; active control uses central configuration and zone entries.",
-        "data": {
-          "name": "Name",
-          "delete": "Delete this record",
-          "kind": "Equipment type",
-          "entity_id": "Physical entity (for HVAC: the indoor unit climate entity)",
-          "zone_id": "Zone",
-          "group_id": "Outdoor unit group (HVAC only)"
-        },
-        "submit": "Apply and return"
-      },
-      "building": {
-        "title": "Central configuration",
-        "description": "These limits and parameters apply to zones that select building settings. Outdoor temperature always belongs to the whole building. Older outdoor sources still awaiting a choice: {outdoor_candidates}. This legacy configuration calculates plans; active control uses central configuration and zone entries.",
-        "data": {
-          "outdoor_temperature_entity": "Outdoor temperature sensor (whole building)",
-          "outdoor_max_age_seconds": "Maximum outdoor temperature age (seconds; 0 = disabled)",
-          "heating_limit": "Central heating limit (°C)",
-          "cooling_limit": "Central cooling limit (°C)",
-          "hysteresis": "Central temperature hysteresis (°C)",
-          "sensor_validation": "Central sensor validation (state_based = default; update_based only for periodically reporting sensors)",
-          "max_age_seconds": "Central maximum update age for update_based (seconds; ignored by state_based)",
-          "manual_override_enabled": "Temporarily respect manual operation of linked air conditioners",
-          "manual_override_duration_minutes": "Automatic control pause after manual operation (minutes, 5–120)",
-          "min_on_seconds": "Minimum indoor unit on-time before switching off (seconds; comfort)",
-          "min_off_seconds": "Minimum indoor unit off-time before switching on (seconds; safety, check manufacturer)",
-          "changeover_wait_seconds": "Wait between stopping and the opposite mode on a group switch (seconds; safety)",
-          "presence_entity": "Building presence (binary_sensor, input_boolean, alarm panel, person, group or zone)",
-          "eco_heating_limit": "Eco heating limit (°C; no motion in the zone)",
-          "eco_cooling_limit": "Eco cooling limit (°C; no motion in the zone)",
-          "away_heating_limit": "Away heating limit (°C; building absent)",
-          "away_cooling_limit": "Away cooling limit (°C; building absent)",
-          "motion_delay_seconds": "Motion detection delay (seconds)",
-          "motion_off_delay_minutes": "Time occupied after last motion (minutes)",
-          "setpoint_max_offset": "Room regulation: maximum setpoint correction of an indoor unit (°C)",
-          "setpoint_interval_seconds": "Minimum time between setpoint or fan speed changes (seconds)",
-          "window_delay_seconds": "Open window: delay before the room stops (seconds)",
-          "floor_window_resume_delay_minutes": "Floor heating: wait after closing windows or doors (minutes, default 5, 0 = immediate)",
-          "sun_power_entity": "Screens: solar power sensor (sunshine)",
-          "sun_power_threshold": "Screens: solar power above which the sun shines (W)",
-          "screen_block_entity": "Block entity, e.g. wind alarm (optional; only off allows movement)",
-          "screen_shade_position": "Screens: position when shading (%; 100 = open)",
-          "screen_override_minutes": "Screens: respect manual operation for (minutes)",
-          "weather_entity": "Weather forecast (optional; warm/cold days for screens and fewer heat/cool changeovers)",
-          "auto_fan_step": "Automatic fan: °C from the target per fan speed step",
-          "sun_entity": "Sun position entity (default sun.sun)",
-          "preconditioning_max_minutes": "Maximum preparation time (minutes; default 180)",
-          "preconditioning_buffer_minutes": "Preparation safety margin (minutes; default 10)",
-          "preconditioning_heating_rate": "Initial heating rate (°C/min; default 0.05, adjusted for outdoor temperature)",
-          "preconditioning_cooling_rate": "Initial cooling rate (°C/min; default 0.05, adjusted for outdoor temperature)",
-          "screen_min_move_minutes": "Minimum time between automatic movements (minutes; default 30)",
-          "screen_open_delay_minutes": "Stable demand before opening (minutes; default 15)",
-          "screen_shade_delay_minutes": "Stable demand before shading (minutes; default 5)",
-          "floor_heating_limit": "Floor heating: fixed minimum room temperature (°C; default 16)",
-          "screen_rain_protection": "Enable rain protection (default on with weather source)",
-          "screen_rain_entity": "Rain source (optional weather or binary_sensor; empty = central weather entity)",
-          "screen_rain_dry_minutes": "Dry hold before shading may lower again (minutes; default 30)",
-          "screen_rain_max_age_minutes": "Maximum weather report age (minutes; default 60; binary_sensor uses availability)",
-          "screen_wind_protection": "Use wind protection (current wind condition; limits optional)",
-          "screen_wind_speed_limit": "Maximum sustained wind (km/h; enter manufacturer limit, empty = not checked)",
-          "screen_wind_gust_limit": "Maximum wind gust (km/h; enter manufacturer limit, empty = not checked)",
-          "screen_wind_calm_minutes": "Calm hold before shading may lower again (minutes; default 30)",
-          "screen_wind_max_age_minutes": "Maximum wind weather report age (minutes; default 60)",
-          "office_schedule_entity": "Office opening hours (optional)",
-          "workday_entity": "Workday sensor for today (optional)",
-          "workday_presence_zone_id": "Room to activate on workday arrival (optional)"
-        },
-        "data_description": {
-          "office_schedule_entity": "Select a schedule helper. Ordinary rooms prepare automatically before opening, including while absent. A maximum 15-minute arrival grace follows opening; presence and motion then determine comfort. Calendar rooms continue to follow their bookings. Rooms observed in comfort while the building is present during opening hours stay in comfort after closing until the building becomes absent. A new arrival outside opening hours does not activate this continuation.",
-          "manual_override_enabled": "Without an opening-hours schedule and building presence, manual switch-on temporarily pauses automatic control. With both configured, manual switch-on while present in comfort authorizes continued room use with automatic temperature and fan control. Manual switch-off and setpoint changes by a Home Assistant user are temporarily respected. This is separate from temporary targets on the Zonentra thermostat.",
-          "setpoint_interval_seconds": "Used per air conditioner for both setpoint regulation and automatic fan speeds.",
-          "workday_entity": "Separate from opening hours: on = workday, off = non-workday. Choose a sensor for today (offset 0). On non-workdays or with an unusable sensor, office preparation and arrival grace are skipped. Presence and calendar bookings still work. Without a sensor, only the schedule applies.",
-          "screen_wind_protection": "Wind protection takes priority over manual operation. A current windy/windy-variant weather condition also activates protection when measured wind is below the configured limits.",
-          "screen_wind_calm_minutes": "After a wind alarm, this period starts only when all checked wind readings are at or below 80% of their configured limits and the current weather condition is not windy/windy-variant. With limits of 40 km/h sustained wind and 50 km/h gusts, this means at most 32 and 40 km/h. Readings must stay calm for the entire period; a higher or missing reading restarts the wait.",
-          "screen_override_minutes": "Pauses normal automatic shading control after manual operation. Wind and rain protection still take priority and may raise the shading.",
-          "workday_presence_zone_id": "Only this room receives automatic comfort outside opening hours when the building is present. Requires an opening-hours schedule, building presence and an on-state from today’s workday sensor. Never on Saturday or Sunday. Choose — to disable. Bookings and manual control remain independent."
-        },
-        "submit": "Apply and return"
-      },
-      "zone_settings": {
-        "title": "Zone",
-        "description": "One room with its temperature sensor, indoor units (existing climate entities) and outdoor unit group. Disable a central choice to enter local values in the next step. The room gets its own Zonentra thermostat; its indoor units are only switched once its Room regulation switch is on.",
-        "data": {
-          "name": "Name",
-          "temperature_entity": "Room temperature sensor",
-          "indoor_units": "Indoor units (climate entities)",
-          "group_id": "Outdoor unit group",
-          "weight": "Zone weight (optional, default 1)",
-          "use_building_limits": "Use central climate limits",
-          "use_building_parameters": "Use central regulation parameters",
-          "occupancy_entity": "Motion sensor (optional; without motion the zone uses the eco band)",
-          "contact_entities": "Window and door contacts or covers (optional)",
-          "floor_heating_entities": "Floor thermostats with room temperature setpoint (climate; legacy number observation only)",
-          "shading_entities": "Shading (optional)",
-          "vane_entity": "Vane (optional; select, number or switch entity of the indoor unit)",
-          "vane_cool_value": "Vane when cooling (up): option, number, or on/off for a switch",
-          "vane_heat_value": "Vane when heating (down): option, number, or on/off for a switch",
-          "facade": "Facade of the screens (optional)",
-          "calendar_entity": "Room calendar (optional; adaptive heating/cooling before meetings)",
-          "use_building_preconditioning": "Use central meeting preparation settings",
-          "use_building_floor_heating": "Use central floor heating settings",
-          "native_regulation": "Trial: let the air conditioner regulate during comfort",
-          "floor_demand_entity": "Manifold circuit control value in % (optional)"
-        },
-        "submit": "Save",
-        "data_description": {
-          "native_regulation": "Only this room. A running air conditioner stays enabled at the target, with slower temperature corrections. Eco/away, open windows, manual operation and group protection still apply. Fan control is unchanged. Off = existing control.",
-          "floor_demand_entity": "0% is displayed as no heat demand and a value above 0% as heating. This follows the reported control value of the manifold circuit."
-        }
-      },
-      "zone_parameters": {
-        "title": "Local zone values",
-        "description": "These values apply only to this zone. Fixed comfort, eco and away limits are set on the zone's device.",
-        "data": {
-          "heating_limit": "Heating limit (°C)",
-          "cooling_limit": "Cooling limit (°C)",
-          "hysteresis": "Temperature hysteresis (°C)",
-          "sensor_validation": "Sensor validation (state_based = default; update_based only for periodically reporting sensors)",
-          "max_age_seconds": "Maximum update age for update_based (seconds; ignored by state_based)",
-          "preconditioning_max_minutes": "Maximum preparation time (minutes; default 180)",
-          "preconditioning_buffer_minutes": "Preparation safety margin (minutes; default 10)",
-          "preconditioning_heating_rate": "Initial heating rate (°C/min; default 0.05, adjusted for outdoor temperature)",
-          "preconditioning_cooling_rate": "Initial cooling rate (°C/min; default 0.05, adjusted for outdoor temperature)",
-          "floor_heating_limit": "Floor heating: fixed minimum room temperature (°C; default 16)"
-        },
-        "submit": "Save"
       },
       "preconditioning": {
         "title": "Meeting preparation",

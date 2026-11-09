@@ -157,10 +157,7 @@ def test_every_menu_option_has_a_label(language, section, step, option):
 
 
 def test_menu_contains_central_configuration():
-    assert ("options", "init", "building") in list(menus())
-    assert label("nl", "options", "step", "init", "menu_options", "building") == (
-        "Centrale configuratie"
-    )
+    assert ("options", "init", "general") in list(menus())
     assert ("config", "user", "central") in list(menus())
     assert label("nl", "config", "step", "user", "menu_options", "zone") == "Ruimte"
 

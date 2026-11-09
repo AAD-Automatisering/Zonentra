@@ -18,16 +18,14 @@ from homeassistant.helpers import selector
 
 from . import central_entry
 from . import zone_entries as config_zone_entries
-from .const import DOMAIN, KINDS, TOPOLOGY_KEYS
+from .const import DOMAIN
 from .migration import (
     BAND_FIELDS,
-    DEVICE_LIMITS,
     FLOOR_FIELDS,
     LIMIT_FIELDS,
     NEW_BUILDING_DEFAULTS,
     PARAMETER_FIELDS,
     PRECONDITIONING_FIELDS,
-    migrate_options,
 )
 from .models import (
     CONTACT_DOMAINS,
@@ -35,7 +33,6 @@ from .models import (
     ZONE_ENTITY_FIELDS,
     BuildingSettings,
     EquipmentGroup,
-    Zone,
     build_model,
 )
 from .observations import VALIDATION_STRATEGIES
@@ -54,6 +51,23 @@ from .topology import (
 def entity_selector(domain=None):
     config = {"filter": {"domain": domain}} if domain else {}
     return selector.EntitySelector(config)
+
+
+def source_schema(hass, fields: dict) -> vol.Schema:
+    """Keep Zonentra's own entities out of its source pickers."""
+    excluded = sorted(
+        entry.entity_id
+        for entry in er.async_get(hass).entities.values()
+        if entry.platform == DOMAIN
+    )
+    return vol.Schema(
+        {
+            key: selector.EntitySelector({**field.config, "exclude_entities": excluded})
+            if isinstance(field, selector.EntitySelector)
+            else field
+            for key, field in fields.items()
+        }
+    )
 
 
 def numeric(low, high, step=0.1, unit=None):
@@ -86,19 +100,13 @@ def preconditioning_fields() -> dict:
     }
 
 
-def building_fields(limits: bool = True) -> dict:
-    """Central building settings, shared by the central and legacy flows.
-
-    The central configuration (0.10) sets its static limits on its device;
-    only the legacy entry keeps them in the form (``limits``).
-    """
+def building_fields() -> dict:
+    """Central building settings."""
     fields = {
         **preconditioning_fields(),
         **floor_fields(),
         vol.Optional("outdoor_temperature_entity"): entity_selector("sensor"),
         vol.Optional("outdoor_max_age_seconds"): numeric(0, 86400, 1, "s"),
-        vol.Optional("heating_limit"): numeric(5, 35, unit="°C"),
-        vol.Optional("cooling_limit"): numeric(5, 35, unit="°C"),
         vol.Optional("hysteresis"): numeric(0.1, 2, unit="°C"),
         vol.Optional("sensor_validation"): choice(list(VALIDATION_STRATEGIES)),
         vol.Optional("max_age_seconds"): numeric(0, 86400, 1, "s"),
@@ -113,10 +121,6 @@ def building_fields(limits: bool = True) -> dict:
         vol.Optional("office_schedule_entity"): entity_selector("schedule"),
         vol.Optional("workday_entity"): entity_selector("binary_sensor"),
         vol.Optional("workday_presence_zone_id"): choice([{"value": "", "label": "—"}]),
-        vol.Optional("eco_heating_limit"): numeric(5, 35, unit="°C"),
-        vol.Optional("eco_cooling_limit"): numeric(5, 35, unit="°C"),
-        vol.Optional("away_heating_limit"): numeric(5, 35, unit="°C"),
-        vol.Optional("away_cooling_limit"): numeric(5, 35, unit="°C"),
         vol.Optional("motion_delay_seconds"): numeric(0, 600, 1, "s"),
         vol.Optional("motion_off_delay_minutes"): numeric(1, 240, 1, "min"),
         # Room regulation (0.9): self-regulating setpoint of running units.
@@ -151,12 +155,6 @@ def building_fields(limits: bool = True) -> dict:
         # Weather forecast (0.12): warm/cold days save gas and electricity.
         vol.Optional("weather_entity"): entity_selector("weather"),
     }
-    if not limits:
-        fields = {
-            marker: value
-            for marker, value in fields.items()
-            if marker.schema not in DEVICE_LIMITS
-        }
     return fields
 
 
@@ -237,7 +235,7 @@ def applicable_fields(fields: dict, record: dict) -> dict:
 def section_fields(keys, record: dict | None = None) -> dict:
     fields = {
         marker: value
-        for marker, value in building_fields(limits=False).items()
+        for marker, value in building_fields().items()
         if marker.schema in keys
     }
 
@@ -526,28 +524,9 @@ class ZoneFormMixin:
         central = central_entry(self.hass)
         return list(central.options.get("groups", [])) if central else []
 
-    def _source_schema(self, fields: dict) -> vol.Schema:
-        """Keep Zonentra's own entities out of the room's source pickers."""
-        registry = er.async_get(self.hass)
-        excluded = sorted(
-            entry.entity_id
-            for entry in registry.entities.values()
-            if entry.platform == DOMAIN
-        )
-        return vol.Schema(
-            {
-                key: selector.EntitySelector(
-                    {**field.config, "exclude_entities": excluded}
-                )
-                if isinstance(field, selector.EntitySelector)
-                else field
-                for key, field in fields.items()
-            }
-        )
-
     def _zone_form(self, step_id, values, errors):
         schema = self.add_suggested_values_to_schema(
-            self._source_schema(zone_fields(self._groups())),
+            source_schema(self.hass, zone_fields(self._groups())),
             {**ZONE_DEFAULTS, **values},
         )
         return self.async_show_form(step_id=step_id, data_schema=schema, errors=errors)
@@ -596,6 +575,10 @@ class ZonentraConfigFlow(ZoneFormMixin, ConfigFlow, domain=DOMAIN):
             else:
                 try:
                     build_model("central", name, {"building": settings})
+                    if entity_id := settings.get("outdoor_temperature_entity"):
+                        source = er.async_get(self.hass).async_get(entity_id)
+                        if source and source.platform == DOMAIN:
+                            raise ValueError("invalid_entity")
                 except ValueError as err:
                     errors["base"] = str(err)
                 else:
@@ -607,11 +590,12 @@ class ZonentraConfigFlow(ZoneFormMixin, ConfigFlow, domain=DOMAIN):
                         options={"building": settings, "groups": []},
                     )
         schema = self.add_suggested_values_to_schema(
-            vol.Schema(
+            source_schema(
+                self.hass,
                 {
                     vol.Required("name"): selector.TextSelector(),
                     **section_fields(NEW_CENTRAL_FIELDS),
-                }
+                },
             ),
             user_input or {},
         )
@@ -660,7 +644,7 @@ class ZonentraConfigFlow(ZoneFormMixin, ConfigFlow, domain=DOMAIN):
             return ZoneOptionsFlow()
         if kind == CENTRAL:
             return CentralOptionsFlow()
-        return ZonentraOptionsFlow()
+        raise ValueError("Unsupported Zonentra configuration")
 
 
 class ZoneOptionsFlow(ZoneFormMixin, OptionsFlow):
@@ -734,7 +718,7 @@ class ZoneOptionsFlow(ZoneFormMixin, OptionsFlow):
         fields = zone_section_fields(section, self._groups(), values)
         self._room_visible_keys = {marker.schema for marker in fields}
         schema = self.add_suggested_values_to_schema(
-            self._source_schema(fields),
+            source_schema(self.hass, fields),
             {
                 **building_defaults(),
                 **building,
@@ -779,405 +763,13 @@ class ZoneOptionsFlow(ZoneFormMixin, OptionsFlow):
         return self.async_create_entry(title="", data=self.zone)
 
 
-class ZonentraOptionsFlow(OptionsFlowWithReload):
-    """Legacy (pre-0.6) single entry: collect edits and save only via Finish."""
-
-    _limits_in_form = True
+class CentralOptionsFlow(OptionsFlowWithReload):
+    """Edit central settings and outdoor-unit groups."""
 
     def __init__(self):
         self.topology: dict[str, Any] | None = None
         self.selected: str | None = None
         self.new_id: str | None = None
-        self._visible_zone_blocks = {"limits": False, "parameters": False}
-
-    async def async_step_init(self, user_input=None):
-        if self.topology is None:
-            self.topology = migrate_options(dict(self.config_entry.options))
-            for key in TOPOLOGY_KEYS:
-                self.topology.setdefault(key, [])
-        return self.async_show_menu(
-            step_id="init",
-            menu_options=["building", "zone", "group", "equipment", "finish"],
-        )
-
-    async def async_step_building(self, user_input=None):
-        errors = {}
-        if user_input is not None:
-            candidate = deepcopy(self.topology)
-            settings = {key: value for key, value in user_input.items() if value != ""}
-            if not self._limits_in_form:
-                # Set on the device: keep them when the form is saved.
-                current = self.topology.get("building", {})
-                settings = {
-                    **{key: current[key] for key in DEVICE_LIMITS if key in current},
-                    **settings,
-                }
-            candidates = self.topology.get("building", {}).get(
-                "outdoor_temperature_candidates", []
-            )
-            if candidates and not settings.get("outdoor_temperature_entity"):
-                settings["outdoor_temperature_candidates"] = candidates
-            current = self.topology.get("building", {})
-            if "max_age_seconds" not in getattr(self, "_building_visible_keys", ()):
-                if "max_age_seconds" in current:
-                    settings["max_age_seconds"] = current["max_age_seconds"]
-            candidate["building"] = settings
-            try:
-                self._validate(candidate)
-            except ValueError as err:
-                errors["base"] = str(err)
-            else:
-                self.topology = candidate
-                if (
-                    settings.get("sensor_validation", "state_based") == "update_based"
-                    and "max_age_seconds" not in self._building_visible_keys
-                ):
-                    return await self.async_step_building()
-                return await self.async_step_init()
-        fields = building_fields(limits=self._limits_in_form)
-        defaults = building_defaults()
-        current = self.topology.get("building", {})
-        fields = applicable_fields(
-            fields, {**defaults, **current, **(user_input or {})}
-        )
-        self._building_visible_keys = {marker.schema for marker in fields}
-        schema = self.add_suggested_values_to_schema(
-            vol.Schema(fields), {**defaults, **current, **(user_input or {})}
-        )
-        return self.async_show_form(
-            step_id="building",
-            data_schema=schema,
-            errors=errors,
-            description_placeholders={
-                "outdoor_candidates": ", ".join(
-                    current.get("outdoor_temperature_candidates", [])
-                )
-                or "—"
-            },
-        )
-
-    async def async_step_finish(self, user_input=None):
-        # Revalidate at the transaction boundary.
-        self._model(self.topology)
-        return self.async_create_entry(title="", data=self._stored())
-
-    def _model(self, topology):
-        return build_model(
-            self.config_entry.entry_id, self.config_entry.data["name"], topology
-        )
-
-    def _stored(self) -> dict:
-        return self.topology
-
-    async def _select(self, category, user_input):
-        if user_input is not None:
-            self.selected = user_input["record"]
-            self.new_id = uuid4().hex if self.selected == "__new__" else None
-            return await getattr(self, f"async_step_{category}_details")()
-        records = self.topology[
-            {"zone": "zones", "group": "groups", "equipment": "equipment"}[category]
-        ]
-        return self.async_show_form(
-            step_id=category,
-            data_schema=vol.Schema(
-                {
-                    vol.Required("record"): choice(
-                        [
-                            {"value": "__new__", "label": "Add new"},
-                            *[
-                                {"value": item["id"], "label": item["name"]}
-                                for item in records
-                            ],
-                        ]
-                    ),
-                }
-            ),
-        )
-
-    async def async_step_zone(self, user_input=None):
-        return await self._select("zone", user_input)
-
-    async def async_step_group(self, user_input=None):
-        return await self._select("group", user_input)
-
-    async def async_step_equipment(self, user_input=None):
-        if not self.topology["zones"]:
-            return self.async_show_form(
-                step_id="equipment", errors={"base": "add_zone_first"}
-            )
-        return await self._select("equipment", user_input)
-
-    def _schema(self, category, suggestions=None):
-        fields = {
-            vol.Required("name"): selector.TextSelector(),
-        }
-        if category == "zone":
-            fields.update(
-                {
-                    vol.Optional("temperature_entity"): entity_selector("sensor"),
-                    vol.Optional("use_building_limits"): selector.BooleanSelector(),
-                    vol.Optional("use_building_parameters"): selector.BooleanSelector(),
-                    vol.Optional("native_regulation"): selector.BooleanSelector(),
-                    vol.Optional("floor_demand_entity"): entity_selector("sensor"),
-                    vol.Optional("occupancy_entity"): entity_selector("binary_sensor"),
-                    vol.Optional("calendar_entity"): entity_selector("calendar"),
-                    vol.Optional(
-                        "use_building_preconditioning"
-                    ): selector.BooleanSelector(),
-                    **preconditioning_fields(),
-                    **floor_fields(),
-                    vol.Optional(
-                        "use_building_floor_heating"
-                    ): selector.BooleanSelector(),
-                    vol.Optional("heating_limit"): numeric(5, 35, unit="°C"),
-                    vol.Optional("cooling_limit"): numeric(5, 35, unit="°C"),
-                    vol.Optional("contact_entities"): multi(list(CONTACT_DOMAINS)),
-                    vol.Optional("weight"): numeric(0.1, 10),
-                    vol.Optional("hysteresis"): numeric(0.1, 2, unit="°C"),
-                    vol.Optional("sensor_validation"): choice(
-                        list(VALIDATION_STRATEGIES)
-                    ),
-                    vol.Optional("max_age_seconds"): numeric(0, 86400, 1, "s"),
-                    vol.Optional("group_id"): self._group_selector(),
-                }
-            )
-        elif category == "group":
-            fields.update(
-                {
-                    vol.Optional("mode_entity"): entity_selector(
-                        ["sensor", "select", "climate"]
-                    ),
-                    vol.Optional("min_switch_seconds"): numeric(0, 86400, 1, "s"),
-                    vol.Optional("min_demand_score"): numeric(0.1, 100),
-                    vol.Optional("score_deadband"): numeric(0.1, 100),
-                    vol.Optional("max_age_seconds"): numeric(0, 86400, 1, "s"),
-                }
-            )
-        elif category == "equipment":
-            fields.update(
-                {
-                    vol.Required("kind"): choice(list(KINDS)),
-                    vol.Required("entity_id"): entity_selector(),
-                    vol.Required("zone_id"): choice(
-                        [
-                            {"value": item["id"], "label": item["name"]}
-                            for item in self.topology["zones"]
-                        ]
-                    ),
-                    vol.Optional("group_id"): self._group_selector(),
-                }
-            )
-        if self.selected != "__new__":
-            fields[vol.Optional("delete", default=False)] = selector.BooleanSelector()
-        schema = vol.Schema(fields)
-        key = {"zone": "zones", "group": "groups", "equipment": "equipment"}[category]
-        current = next(
-            (item for item in self.topology[key] if item["id"] == self.selected), {}
-        )
-        defaults = {}
-        if category == "zone":
-            zone = Zone(id="suggestion", name="suggestion")
-            defaults = {
-                "heating_limit": 21.0,
-                "cooling_limit": 24.0,
-                **{key: getattr(zone, key) for key in PRECONDITIONING_FIELDS},
-                **{key: getattr(zone, key) for key in FLOOR_FIELDS},
-                "native_regulation": zone.native_regulation,
-                "weight": zone.weight,
-                "hysteresis": zone.hysteresis,
-                "max_age_seconds": zone.max_age_seconds,
-                "sensor_validation": zone.sensor_validation,
-                "use_building_limits": True,
-                "use_building_parameters": True,
-                "use_building_preconditioning": True,
-                "use_building_floor_heating": True,
-            }
-        elif category == "group":
-            group = EquipmentGroup(id="suggestion", name="suggestion")
-            defaults = {
-                key: getattr(group, key)
-                for key in (
-                    "min_switch_seconds",
-                    "min_demand_score",
-                    "score_deadband",
-                    "max_age_seconds",
-                )
-            }
-        if category == "zone":
-            central = self.topology.get("building", {})
-            defaults.update(
-                {
-                    key: central[key]
-                    for key in (
-                        *LIMIT_FIELDS,
-                        *PARAMETER_FIELDS,
-                        *PRECONDITIONING_FIELDS,
-                        *FLOOR_FIELDS,
-                    )
-                    if key in central
-                }
-            )
-        values = {**defaults, **current, **(suggestions or {})}
-        if category == "zone" and suggestions is not None:
-            for key in (
-                "temperature_entity",
-                "occupancy_entity",
-                "contact_entities",
-                "group_id",
-            ):
-                if key not in suggestions:
-                    values.pop(key, None)
-        if category == "zone":
-            for flag, block, keys in (
-                ("use_building_limits", "limits", LIMIT_FIELDS),
-                ("use_building_parameters", "parameters", PARAMETER_FIELDS),
-                ("use_building_floor_heating", "floor_heating", FLOOR_FIELDS),
-                (
-                    "use_building_preconditioning",
-                    "preconditioning",
-                    PRECONDITIONING_FIELDS,
-                ),
-            ):
-                self._visible_zone_blocks[block] = not values[flag]
-                if values[flag]:
-                    fields = {
-                        marker: value
-                        for marker, value in fields.items()
-                        if marker.schema not in keys
-                    }
-            fields = applicable_fields(fields, values)
-            self._visible_zone_timeout = "max_age_seconds" in {
-                marker.schema for marker in fields
-            }
-            schema = vol.Schema(fields)
-        return self.add_suggested_values_to_schema(schema, values)
-
-    def _group_selector(self):
-        return choice(
-            [
-                {"value": "", "label": "No group"},
-                *[
-                    {"value": item["id"], "label": item["name"]}
-                    for item in self.topology["groups"]
-                ],
-            ]
-        )
-
-    async def _edit(self, category, user_input):
-        errors = {}
-        if user_input is not None:
-            candidate = deepcopy(self.topology)
-            key = {"zone": "zones", "group": "groups", "equipment": "equipment"}[
-                category
-            ]
-            record = {k: v for k, v in user_input.items() if k != "delete" and v != ""}
-            record["id"] = self.new_id if self.selected == "__new__" else self.selected
-            previous_record = next(
-                (item for item in self.topology[key] if item["id"] == self.selected), {}
-            )
-            if category == "zone":
-                for flag, block, keys in (
-                    ("use_building_limits", "limits", LIMIT_FIELDS),
-                    ("use_building_parameters", "parameters", PARAMETER_FIELDS),
-                    ("use_building_floor_heating", "floor_heating", FLOOR_FIELDS),
-                    (
-                        "use_building_preconditioning",
-                        "preconditioning",
-                        PRECONDITIONING_FIELDS,
-                    ),
-                ):
-                    record.setdefault(flag, previous_record.get(flag, True))
-                    if (
-                        not record[flag]
-                        and not self._visible_zone_blocks[block]
-                        and not user_input.get("delete")
-                    ):
-                        return self.async_show_form(
-                            step_id="zone_details",
-                            data_schema=self._schema(
-                                category, {**user_input, **{flag: record[flag]}}
-                            ),
-                            errors={},
-                        )
-                    if record[flag]:
-                        for field in keys:
-                            record.pop(field, None)
-                            if field in previous_record:
-                                record[field] = previous_record[field]
-            if category == "zone" and not user_input.get("delete"):
-                if not self._visible_zone_timeout:
-                    if "max_age_seconds" in previous_record:
-                        record["max_age_seconds"] = previous_record["max_age_seconds"]
-                    if (
-                        not record.get("use_building_parameters", True)
-                        and record.get("sensor_validation", "state_based")
-                        == "update_based"
-                    ):
-                        return self.async_show_form(
-                            step_id="zone_details",
-                            data_schema=self._schema(category, record),
-                            errors={},
-                        )
-            if category == "group":
-                previous_record = next(
-                    (
-                        item
-                        for item in self.topology[key]
-                        if item["id"] == self.selected
-                    ),
-                    {},
-                )
-                if "single_hvac_mode" in previous_record:
-                    record["single_hvac_mode"] = previous_record["single_hvac_mode"]
-            try:
-                candidate[key] = [
-                    item for item in candidate[key] if item["id"] != self.selected
-                ]
-                if not user_input.get("delete", False):
-                    candidate[key].append(record)
-                self._validate(candidate)
-            except ValueError as err:
-                errors["base"] = str(err)
-            else:
-                self.topology = candidate
-                return await self.async_step_init()
-        schema = self._schema(category, user_input)
-        return self.async_show_form(
-            step_id=f"{category}_details", data_schema=schema, errors=errors
-        )
-
-    def _validate(self, candidate):
-        building = self._model(candidate)
-        previous = self._model(self.topology)
-        known = previous.entity_ids | frozenset(
-            previous.settings.outdoor_temperature_candidates
-        )
-        registry = er.async_get(self.hass)
-        for entity_id in building.entity_ids:
-            registered = registry.async_get(entity_id)
-            if registered and registered.platform == DOMAIN:
-                raise ValueError("invalid_entity")
-            if (
-                entity_id not in known
-                and not registered
-                and self.hass.states.get(entity_id) is None
-            ):
-                raise ValueError("entity_not_found")
-
-    async def async_step_zone_details(self, user_input=None):
-        return await self._edit("zone", user_input)
-
-    async def async_step_group_details(self, user_input=None):
-        return await self._edit("group", user_input)
-
-    async def async_step_equipment_details(self, user_input=None):
-        return await self._edit("equipment", user_input)
-
-
-class CentralOptionsFlow(ZonentraOptionsFlow):
-    """Central configuration: building settings and outdoor unit groups."""
-
-    _limits_in_form = False  # Comfort/eco/away limits are set on the device.
 
     async def async_step_init(self, user_input=None):
         if self.topology is None:
@@ -1246,7 +838,7 @@ class CentralOptionsFlow(ZonentraOptionsFlow):
             fields[vol.Optional("workday_presence_zone_id")] = choice(options)
         self._central_visible_keys = {marker.schema for marker in fields}
         schema = self.add_suggested_values_to_schema(
-            vol.Schema(fields),
+            source_schema(self.hass, fields),
             {**building_defaults(), **current, **(user_input or {})},
         )
         return self.async_show_form(
@@ -1278,6 +870,112 @@ class CentralOptionsFlow(ZonentraOptionsFlow):
 
     async def async_step_preconditioning(self, user_input=None):
         return await self._section("preconditioning", user_input)
+
+    async def async_step_finish(self, user_input=None):
+        self._model(self.topology)
+        return self.async_create_entry(title="", data=self._stored())
+
+    async def async_step_group(self, user_input=None):
+        if user_input is not None:
+            self.selected = user_input["record"]
+            self.new_id = uuid4().hex if self.selected == "__new__" else None
+            return await self.async_step_group_details()
+        return self.async_show_form(
+            step_id="group",
+            data_schema=vol.Schema(
+                {
+                    vol.Required("record"): choice(
+                        [
+                            {"value": "__new__", "label": "Add new"},
+                            *[
+                                {"value": group["id"], "label": group["name"]}
+                                for group in self.topology["groups"]
+                            ],
+                        ]
+                    )
+                }
+            ),
+        )
+
+    async def async_step_group_details(self, user_input=None):
+        errors = {}
+        current = next(
+            (
+                group
+                for group in self.topology["groups"]
+                if group["id"] == self.selected
+            ),
+            {},
+        )
+        if user_input is not None:
+            candidate = deepcopy(self.topology)
+            group = {
+                key: value
+                for key, value in user_input.items()
+                if key != "delete" and value != ""
+            }
+            group["id"] = self.new_id if self.selected == "__new__" else self.selected
+            if "single_hvac_mode" in current:
+                group["single_hvac_mode"] = current["single_hvac_mode"]
+            candidate["groups"] = [
+                item for item in candidate["groups"] if item["id"] != self.selected
+            ]
+            if not user_input.get("delete", False):
+                candidate["groups"].append(group)
+            try:
+                self._validate(candidate)
+            except ValueError as err:
+                errors["base"] = str(err)
+            else:
+                self.topology = candidate
+                return await self.async_step_init()
+        fields = {
+            vol.Required("name"): selector.TextSelector(),
+            vol.Optional("mode_entity"): entity_selector(
+                ["sensor", "select", "climate"]
+            ),
+            vol.Optional("min_switch_seconds"): numeric(0, 86400, 1, "s"),
+            vol.Optional("min_demand_score"): numeric(0.1, 100),
+            vol.Optional("score_deadband"): numeric(0.1, 100),
+            vol.Optional("max_age_seconds"): numeric(0, 86400, 1, "s"),
+        }
+        if self.selected != "__new__":
+            fields[vol.Optional("delete", default=False)] = selector.BooleanSelector()
+        group = EquipmentGroup(id="suggestion", name="suggestion")
+        defaults = {
+            key: getattr(group, key)
+            for key in (
+                "min_switch_seconds",
+                "min_demand_score",
+                "score_deadband",
+                "max_age_seconds",
+            )
+        }
+        schema = self.add_suggested_values_to_schema(
+            source_schema(self.hass, fields),
+            {**defaults, **current, **(user_input or {})},
+        )
+        return self.async_show_form(
+            step_id="group_details", data_schema=schema, errors=errors
+        )
+
+    def _validate(self, candidate):
+        building = self._model(candidate)
+        previous = self._model(self.topology)
+        known = previous.entity_ids | frozenset(
+            previous.settings.outdoor_temperature_candidates
+        )
+        registry = er.async_get(self.hass)
+        for entity_id in building.entity_ids:
+            registered = registry.async_get(entity_id)
+            if registered and registered.platform == DOMAIN:
+                raise ValueError("invalid_entity")
+            if (
+                entity_id not in known
+                and not registered
+                and self.hass.states.get(entity_id) is None
+            ):
+                raise ValueError("entity_not_found")
 
     def _model(self, topology):
         # Validate against every zone: a referenced group cannot be removed.
