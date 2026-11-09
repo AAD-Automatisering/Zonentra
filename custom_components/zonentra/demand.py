@@ -66,11 +66,7 @@ def collect_zone(
         return read(sources.get(entity), kind, now, max_age)
 
     def equipment(kind):
-        return tuple(
-            item.id
-            for item in building.equipment
-            if item.zone_id == zone.id and item.kind == kind
-        )
+        return building.equipment_ids_by_zone.get((zone.id, kind), ())
 
     if band in ("eco", "away"):  # Eco/away bands: the zone's, else central.
         settings = building.settings

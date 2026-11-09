@@ -214,7 +214,15 @@ class Building:
             zone.id for zone in self.zones if zone.floor_heating_follow_presets
         }
 
-    @property
+    @cached_property
+    def equipment_ids_by_zone(self) -> dict[tuple[str, str], tuple[str, ...]]:
+        """Index the immutable equipment list once for repeated room snapshots."""
+        grouped: dict[tuple[str, str], list[str]] = {}
+        for item in self.equipment:
+            grouped.setdefault((item.zone_id, item.kind), []).append(item.id)
+        return {key: tuple(ids) for key, ids in grouped.items()}
+
+    @cached_property
     def entity_ids(self) -> frozenset[str]:
         """Return configured inputs only, including optional future context."""
         return frozenset(

@@ -58,3 +58,21 @@ def test_unavailable_has_no_action(topology):
     decisions = simulate(build_model("building", "Office", topology), {})
     assert decisions[0].action == "hold"
     assert decisions[0].reason == "source_unavailable"
+
+
+def test_cached_topology_indexes_follow_replaced_buildings(topology):
+    from dataclasses import replace
+
+    building = build_model("building", "Office", topology)
+    first = building.equipment[0]
+    assert building.equipment_ids_by_zone[(first.zone_id, first.kind)] == (first.id,)
+    assert first.entity_id in building.entity_ids
+
+    replacement = replace(first, id="replacement", entity_id="climate.replacement")
+    updated = replace(building, equipment=(replacement,))
+    assert updated.equipment_ids_by_zone[(first.zone_id, first.kind)] == (
+        "replacement",
+    )
+    assert "climate.replacement" in updated.entity_ids
+    assert first.entity_id not in updated.entity_ids
+    assert building.equipment_ids_by_zone[(first.zone_id, first.kind)] == (first.id,)
