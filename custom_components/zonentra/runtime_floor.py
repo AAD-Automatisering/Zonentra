@@ -10,7 +10,7 @@ from homeassistant.util import dt as dt_util
 from .executor import ModeCommand
 from .indoor import HEATING_ACTIONS, observe_unit
 from .runtime_helpers import _setpoint
-from .temperature import convert_temperature
+from .temperature import climate_native_unit, convert_temperature
 
 
 def trustworthy(state):
@@ -114,7 +114,7 @@ class FloorRuntimeMixin:
         native_unit = unit
         entity = self._climate_entity(item.entity_id)
         if entity is not None:
-            native_unit = entity.temperature_unit
+            native_unit = climate_native_unit(entity)
             low, high, step = (
                 entity.min_temp,
                 entity.max_temp,

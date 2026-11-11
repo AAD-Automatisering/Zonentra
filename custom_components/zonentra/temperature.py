@@ -9,6 +9,14 @@ from homeassistant.util.unit_conversion import (
 )
 
 
+def climate_native_unit(entity) -> str:
+    """Read a climate entity's native unit on both supported APIs."""
+    try:
+        return entity.native_temperature_unit
+    except AttributeError:
+        return entity.temperature_unit
+
+
 def convert_temperature(
     value, source, target=UnitOfTemperature.CELSIUS, *, interval=False
 ):

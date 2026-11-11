@@ -12,7 +12,7 @@ from homeassistant.util import dt as dt_util
 
 from .executor import ModeCommand, PresetApplication
 from .runtime_helpers import _setpoint
-from .temperature import convert_temperature
+from .temperature import climate_native_unit, convert_temperature
 
 _LOGGER = logging.getLogger(__name__)
 RETRY_SECONDS = 120
@@ -82,16 +82,17 @@ class CommandRuntimeMixin:
                 # Quantize and clamp in native units before the service's own
                 # conversion. Rounding a converted boundary can fall just outside
                 # the device's strict min/max checks.
+                native_unit = climate_native_unit(entity)
                 native = convert_temperature(
                     command.temperature,
                     UnitOfTemperature.CELSIUS,
-                    entity.temperature_unit,
+                    native_unit,
                 )
                 if native is not None:
                     step = convert_temperature(
                         entity.target_temperature_step,
-                        entity.temperature_unit,
-                        entity.temperature_unit,
+                        native_unit,
+                        native_unit,
                         interval=True,
                     )
                     if step is not None and step > 0:
@@ -99,7 +100,7 @@ class CommandRuntimeMixin:
                     native = min(entity.max_temp, max(entity.min_temp, native))
                     temperature = convert_temperature(
                         native,
-                        entity.temperature_unit,
+                        native_unit,
                         self.hass.config.units.temperature_unit,
                     )
             data["temperature"] = (

@@ -135,10 +135,14 @@ def test_warming_signal_requires_reported_progress_after_one_hour():
         == "monitoring"
     )
     assert (
+        heating_progress(None, now, **{**args, "temperature": 21.5}).status
+        == "monitoring"
+    )
+    assert (
         heating_progress(
             progress.memory,
             later,
-            **{**args, "temperature": 21.5, "reported_at": later},
+            **{**args, "temperature": 21.51, "reported_at": later},
         ).status
         == "adequate"
     )

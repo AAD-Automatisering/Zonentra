@@ -65,7 +65,7 @@ class ZonentraThermostat(ZoneEntity, ClimateEntity):
     _attr_name = None  # The thermostat carries the zone (device) name.
     _attr_translation_key = "thermostat"
     _attr_icon = "mdi:home-thermometer"
-    _attr_temperature_unit = UnitOfTemperature.CELSIUS
+    _attr_native_temperature_unit = UnitOfTemperature.CELSIUS
     _attr_preset_modes = list(PRESETS)
     _attr_min_temp = 5
     _attr_max_temp = 35
@@ -138,27 +138,36 @@ class ZonentraThermostat(ZoneEntity, ClimateEntity):
         return self.runtime.zone_bands[self._zone_id][0]
 
     @property
-    def current_temperature(self) -> float | None:
+    def native_current_temperature(self) -> float | None:
         return self.runtime.zone_snapshots[self._zone_id].temperature.value
 
     @property
-    def target_temperature(self) -> float | None:
+    def native_target_temperature(self) -> float | None:
         """Single target in heat or cool mode: the limit that applies."""
         mode = self.thermostat.hvac_mode
         if mode == "heat":
-            return self.target_temperature_low
+            return self.native_target_temperature_low
         if mode == "cool":
-            return self.target_temperature_high
+            return self.native_target_temperature_high
         return None
 
     @property
-    def target_temperature_low(self) -> float | None:
+    def native_target_temperature_low(self) -> float | None:
         """Heating limit of the band that applies now (comfort, eco, away)."""
         return self.runtime.zone_snapshots[self._zone_id].heating_limit.value
 
     @property
-    def target_temperature_high(self) -> float | None:
+    def native_target_temperature_high(self) -> float | None:
         return self.runtime.zone_snapshots[self._zone_id].cooling_limit.value
+
+    # Home Assistant 2026.10 still reads the legacy names. Only expose those
+    # overrides on versions without the native climate API.
+    if not hasattr(ClimateEntity, "native_temperature_unit"):
+        _attr_temperature_unit = _attr_native_temperature_unit
+        current_temperature = native_current_temperature
+        target_temperature = native_target_temperature
+        target_temperature_low = native_target_temperature_low
+        target_temperature_high = native_target_temperature_high
 
     def _floor_demand(self):
         zone = next(z for z in self.runtime.building.zones if z.id == self._zone_id)
@@ -294,12 +303,12 @@ class ZonentraThermostat(ZoneEntity, ClimateEntity):
             low, high = single_target(
                 "cool" if mode == "cool" else "heat",
                 kwargs[ATTR_TEMPERATURE],
-                self.target_temperature_low,
-                self.target_temperature_high,
+                self.native_target_temperature_low,
+                self.native_target_temperature_high,
                 zone.hysteresis,
             )
-        low = self.target_temperature_low if low is None else low
-        high = self.target_temperature_high if high is None else high
+        low = self.native_target_temperature_low if low is None else low
+        high = self.native_target_temperature_high if high is None else high
         # A one-off manual deviation, not configuration (that is on the
         # device): it holds until a preset is chosen or the band changes.
         changes |= {

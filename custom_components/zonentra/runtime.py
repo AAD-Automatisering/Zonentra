@@ -79,7 +79,7 @@ from .runtime_office import OfficeRuntimeMixin
 from .runtime_shading import ShadingRuntimeMixin
 from .runtime_timing import TimingRuntimeMixin
 from .shading import ScreenDecision, ScreenMove, SunMemory
-from .temperature import convert_temperature
+from .temperature import climate_native_unit, convert_temperature
 from .thermostat import (
     CLEAR_MANUAL,
     FLOOR_ONLY_MODES,
@@ -244,6 +244,7 @@ class BuildingRuntime(
         self.workday_presence_suppressed: set[str] = set()
         self.last_transitions = {}
         self.unit_recovery_until: dict[str, datetime] = {}
+        self._seed_unit_recovery = True
         self.manual_events = {}
         self.coordination_memories = {}
         self.coordinations = {}
@@ -300,6 +301,20 @@ class BuildingRuntime(
                     state.last_changed,
                     self._climate(state) if entity_id.startswith("climate.") else None,
                 )
+        if self._seed_unit_recovery:
+            self._seed_unit_recovery = False
+            # The first off report may have arrived before we subscribed.
+            # Count from the actual state change, even if attributes arrived later.
+            for item in self.building.equipment:
+                if item.kind != "hvac":
+                    continue
+                source = sources.get(item.entity_id)
+                if source and source.state == "off" and source.changed_at:
+                    deadline = source.changed_at + timedelta(
+                        seconds=UNIT_RECOVERY_SECONDS
+                    )
+                    if source.changed_at <= now < deadline:
+                        self.unit_recovery_until[item.id] = deadline
         self._track_cover_contacts(sources)
         transitions = self._transitions(event, now)
         decisions = simulate(self.building, observations)
@@ -741,6 +756,7 @@ class BuildingRuntime(
 
     def adopt(self, previous: "BuildingRuntime") -> None:
         """Take over the in-memory state of the runtime this one replaces."""
+        self._seed_unit_recovery = False
         for name in self.CARRIED:
             setattr(self, name, getattr(previous, name))
         calendars = {
@@ -1533,7 +1549,7 @@ class BuildingRuntime(
         # HA displays absolute temperatures in system units, but publishes the
         # step in the climate entity's native units without conversion.
         entity = self._climate_entity(item.entity_id)
-        step_unit = entity.temperature_unit if entity else source_unit
+        step_unit = climate_native_unit(entity) if entity else source_unit
         step = convert_temperature(
             attributes.get("target_temp_step"), step_unit, interval=True
         )

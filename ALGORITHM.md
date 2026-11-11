@@ -393,6 +393,9 @@ Same-value-rapporten (`state_reported`) en timers zijn geen overgangen.
 HA-gebruiker aan `user_id` en een automation/script aan `parent_id`. Een herkende
 automation die een unit aanzet start geen override. Een overgang met kale context
 kan van een roomcontroller komen en telt buiten de herstelperiode als handmatige bediening.
+Bij de eerste meting na een herstart telt ook een recent gemelde `off` mee als
+Zonentra de overgang zelf heeft gemist. De vijf seconden lopen vanaf de
+statuswijziging in Home Assistant.
 
 `CommandTracker` registreert voor de actieve aansturing per entiteit de
 verwachte state met een begrensde bevestigingsperiode (60 s). Alleen een
@@ -859,7 +862,7 @@ De sensor Controle opwarmvoortgang airco volgt ruimtes met een gekoppelde airco
 en ingeschakelde ruimteregeling. Alleen gemelde aircoactiviteit heating,
 preheating of defrosting tijdens warmtevraag telt; alleen de geselecteerde stand
 heat is onvoldoende bewijs. Na 60 minuten onafgebroken gemelde verwarmingsactiviteit
-signaleert de sensor onvoldoende opwarming als de ruimte nog minstens 1 °C onder
+signaleert de sensor onvoldoende opwarming als de ruimte nog minstens 0,5 °C onder
 de verwarmingsgrens ligt en minder dan 0,3 °C is gestegen. Er moet na de start
 opnieuw een geldige ruimtetemperatuur zijn gerapporteerd. Zonder nieuwe rapportage
 is de uitkomst onbekend. Onderbreking of wegvallende vraag reset de observatie;

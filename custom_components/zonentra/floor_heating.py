@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 
 WATCH_MINUTES = 60
 MINIMUM_RISE = 0.3
-MINIMUM_DEFICIT = 1.0
+MINIMUM_DEFICIT = 0.5
 
 
 @dataclass(frozen=True)
