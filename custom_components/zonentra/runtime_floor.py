@@ -8,7 +8,6 @@ from homeassistant.helpers.temperature import display_temp
 from homeassistant.util import dt as dt_util
 
 from .executor import ModeCommand
-from .floor_heating import heating_progress
 from .indoor import HEATING_ACTIONS, observe_unit
 from .runtime_helpers import _setpoint
 from .temperature import convert_temperature
@@ -235,8 +234,6 @@ class FloorRuntimeMixin:
         # Heating demand is passed straight to the airco. Only cooling waits
         # for trustworthy floor-off feedback; floor failures never delay heat.
         self.hvac_demands = dict(self.zone_demands)
-        self.heating_progress = {}
-        watches = {}
         for zone in self.building.zones:
             floors = [item for item in items if item.zone_id == zone.id]
             demand = self.zone_demands[zone.id]
@@ -255,36 +252,6 @@ class FloorRuntimeMixin:
                 )
             for item in floors:
                 self.floor_plans[item.id]["cooling_blocked"] = blocked
-            if not floors:
-                continue
-            units = [
-                observe_unit(item, sources.get(item.entity_id))
-                for item in self.building.equipment
-                if item.kind == "hvac" and item.zone_id == zone.id
-            ]
-            temperature = self.zone_snapshots[zone.id].temperature
-            target = self.zone_snapshots[zone.id].heating_limit
-            enabled = self.floor_regulated(zone.id) and self.regulated(zone.id)
-            warming = any(
-                unit.available and unit.activity == "heating" for unit in units
-            )
-            watching = enabled and demand.demand == "heating_demand" and warming
-            progress = heating_progress(
-                self.heating_watches.get(zone.id),
-                now,
-                temperature=temperature.value
-                if temperature.quality == "valid"
-                else None,
-                target=target.value if target.quality == "valid" else None,
-                reported_at=temperature.reported_at,
-                watching=watching,
-            )
-            self.heating_progress[zone.id] = progress
-            if progress.memory:
-                watches[zone.id] = progress.memory
-            if progress.next_check:
-                self._floor_checks.append(progress.next_check)
-        self.heating_watches = watches
 
     @staticmethod
     def _floor_command(item, service, temperature=None):

@@ -12,6 +12,7 @@ import re
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
+from .const import AUTO_FAN_STEP
 from .observations import Reading
 
 WINDOW_STATES = ("closed", "opening", "open", "bypass", "not_configured", "unknown")
@@ -19,7 +20,6 @@ EMA_SECONDS = 300.0  # Time constant of the smoothed temperature.
 SLOPE_SECONDS = 900.0  # Time constant of the smoothed slope.
 STALE_SAMPLE_SECONDS = 600.0  # Re-sample an unchanged value so the slope decays.
 AUTO_FAN = "auto"
-AUTO_FAN_STEP = 0.5  # °C of distance per fan speed step.
 AUTO_FAN_HYSTERESIS = 0.1  # °C around a speed boundary (at most 1/4 step).
 
 
@@ -96,8 +96,7 @@ def auto_fan(
     *,
     previous: str | None = None,
 ) -> str | None:
-    """Fan speed for the automatic fan: one step per ``step_size`` °C (default
-    0.5, a central setting) from the target.
+    """Fan speed for the automatic fan: one step per ``step_size`` °C from the target.
 
     ``speeds`` are the unit's fan speeds from low to high, without off/auto.
     The reported previous speed holds within a small band around each boundary.

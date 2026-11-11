@@ -551,7 +551,7 @@ naar nul. Alleen in het geheugen.
 Zonentra's eigen automaat alleen als de units zelf geen `auto` hebben. Afstand =
 verwarmen: grens + hysterese − T; koelen: T − (grens − hysterese). Stand = de
 `int(afstand / auto_fan_step)`-de van de units (`auto_fan_step` centraal, standaard
-0,5 °C) (zonder `off`), begrensd op de hoogste; zonder
+0,4 °C) (zonder `off`), begrensd op de hoogste; zonder
 verwarmen of koelen de laagste. Gestuurd via `set_fan_mode`, eenmaal per gekozen
 stand en hooguit eens per `setpoint_interval_seconds`.
 Een herkende teruggemelde snelheid blijft gelden tot de afstand tot het doel
@@ -559,6 +559,9 @@ de volgende snelheidsgrens met minstens `min(0,1 °C, auto_fan_step / 4)` oversc
 of onder de huidige grens minus die marge daalt. Meerdere standen mogen tegelijk
 worden overgeslagen bij een grote afwijking. Zonder bruikbare vorige stand geldt
 de gewone indeling; zonder temperatuur of in dry/fan_only geldt de laagste stand.
+Bij onvoldoende opwarmvoortgang tijdens warmtevraag kiest Zonentra in heat de
+hoogste stand. De normale regeltoestemming en het ventilatorinterval gelden ook
+bij deze verhoging.
 **Ventilatorbediening.** De Zonentra-climate-entiteit publiceert geen `FAN_MODE`,
 `fan_mode` of `fan_modes`, zodat HomeKit geen ventilatorsnelheidsbediening aanmaakt.
 Ook de snelheidskeuze op de HA-thermostaat vervalt. De automatische regeling,
@@ -851,16 +854,16 @@ moeten ook bij uitgeschakelde vloerregeling betrouwbare off-feedback geven.
 Dezelfde controle blokkeert cool/dry bij de laatste controle vóór verzending.
 Uitgeschakelde vloerregeling verstuurt daarbij geen vloercommando’s.
 
-De sensor Controle opwarmvoortgang airco volgt ruimtes met gekoppelde vloer en airco waarvan
-beide regelingen zijn ingeschakeld. Alleen gemelde aircoactiviteit heating,
+De sensor Controle opwarmvoortgang airco volgt ruimtes met een gekoppelde airco
+en ingeschakelde ruimteregeling. Alleen gemelde aircoactiviteit heating,
 preheating of defrosting tijdens warmtevraag telt; alleen de geselecteerde stand
 heat is onvoldoende bewijs. Na 60 minuten onafgebroken gemelde verwarmingsactiviteit
 signaleert de sensor onvoldoende opwarming als de ruimte nog minstens 1 °C onder
 de verwarmingsgrens ligt en minder dan 0,3 °C is gestegen. Er moet na de start
 opnieuw een geldige ruimtetemperatuur zijn gerapporteerd. Zonder nieuwe rapportage
 is de uitkomst onbekend. Onderbreking of wegvallende vraag reset de observatie;
-voldoende stijging begint een nieuwe observatieperiode. Dit is uitsluitend een
-zichtbaar signaal, geen rendementsmeting of automatische verhoging van het gasdoel.
+voldoende stijging begint een nieuwe observatieperiode. De ventilatorregeling
+gebruikt dit signaal alleen voor de airco.
 
 ## Regenbeveiliging van screens
 

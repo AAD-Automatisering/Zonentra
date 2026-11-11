@@ -49,8 +49,6 @@ Een KNX-vloerthermostaat met alleen `hvac_modes: heat` wordt ook ondersteund voo
 het instellen van de doeltemperatuur. Zonder `off` kan Zonentra de vloer niet
 uitschakelen: dan verschijnt **Uitschakelen niet ondersteund** en blijft aircokoeling
 geblokkeerd zolang de vloer niet betrouwbaar uit meldt.
-De sensor **Controle opwarmvoortgang airco** signaleert langdurig onvoldoende opwarming;
-hij schakelt geen extra gasverwarming in.
 
 In een ruimte met alleen vloerverwarming kun je via **Configureren →
 Vloerverwarming → Volg voorinstellingen** de vloer het actieve verwarmingsdoel
@@ -127,8 +125,10 @@ Comfortgrenzen stel je in op het centrale apparaat of het ruimteapparaat.
 Tijdens een tijdelijke handmatige temperatuurafwijking worden de uitstelmarges
 van de weersverwachting niet toegepast. Na afloop gelden die weer; sensorvalidatie,
 raamdetectie en schakeltijden blijven steeds gelden. De eigen automatische
-ventilator gebruikt rond elke snelheidsgrens 0,1 °C hysterese (bij kleine stappen
-maximaal een kwart van de stap), zodat kleine meetwisselingen geen standwissel geven.
+ventilator gaat standaard per 0,4 °C afstand tot het doel één stand hoger.
+Rond elke snelheidsgrens geldt 0,1 °C hysterese (maximaal een kwart van de stap).
+Signaleert **Controle opwarmvoortgang airco** onvoldoende opwarming terwijl de
+ruimte warmte vraagt, dan kiest Zonentra de hoogste automatische ventilatorstand.
 Een geldige, uitsluitend verwarmende of koelende vraag wordt door de groep gevolgd,
 ook bij een kleine of nul-score tijdens het afmaken van de kamerhysterese.
 De minimale vraagscore en verschilgrens kiezen alleen tussen tegengestelde vragen.

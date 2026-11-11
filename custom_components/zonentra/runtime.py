@@ -32,6 +32,7 @@ from .executor import (
     next_correction_check,
     plan_mode_commands,
 )
+from .floor_heating import heating_progress
 from .forecast import (
     REFRESH_MINUTES,
     RETRY_SECONDS,
@@ -440,6 +441,7 @@ class BuildingRuntime(
             if item.kind == "hvac" and item.id not in indoor_units:
                 indoor_units[item.id] = observe_unit(item, sources.get(item.entity_id))
         self.indoor_units = indoor_units
+        self._update_heating_progress(now)
         self._learn_booking_rates(now)
         self.group_observations = group_observations
         self.mode_comparisons = {
@@ -517,6 +519,11 @@ class BuildingRuntime(
         deadlines.extend(self._office_checks)
         deadlines.extend(self._motion_checks)
         deadlines.extend(self._heating_correction_checks)
+        deadlines.extend(
+            progress.next_check
+            for progress in self.heating_progress.values()
+            if progress.next_check is not None
+        )
         deadlines.extend(self._setpoint_checks)
         deadlines.extend(self._window_checks)
         deadlines.extend(self._manual_checks)
@@ -1205,6 +1212,56 @@ class BuildingRuntime(
                 now,
             )
 
+    def _update_heating_progress(self, now) -> None:
+        zones_with_units = {unit.zone_id for unit in self.indoor_units.values()}
+        warming_zones = {
+            unit.zone_id
+            for unit in self.indoor_units.values()
+            if unit.available and not unit.mismatch and unit.activity == "heating"
+        }
+        progress_by_zone = {}
+        for zone_id in zones_with_units:
+            snapshot = self.zone_snapshots[zone_id]
+            temperature, target = snapshot.temperature, snapshot.heating_limit
+            progress_by_zone[zone_id] = heating_progress(
+                self.heating_watches.get(zone_id),
+                now,
+                temperature=temperature.value
+                if temperature.quality == "valid"
+                else None,
+                target=target.value if target.quality == "valid" else None,
+                reported_at=temperature.reported_at,
+                watching=(
+                    zone_id in warming_zones
+                    and self.regulated(zone_id)
+                    and self.zone_demands[zone_id].demand == "heating_demand"
+                ),
+            )
+        self.heating_progress = progress_by_zone
+        self.heating_watches = {
+            zone_id: progress.memory
+            for zone_id, progress in progress_by_zone.items()
+            if progress.memory is not None
+        }
+
+    def _auto_fan_speed(self, zone, speeds, mode, previous):
+        progress = self.heating_progress.get(zone.id)
+        if speeds and mode == "heat" and progress and progress.status == "insufficient":
+            return speeds[-1]
+        snapshot = self.zone_snapshots[zone.id]
+        return auto_fan(
+            speeds,
+            mode,
+            snapshot.temperature.value
+            if snapshot.temperature.quality == "valid"
+            else None,
+            snapshot.heating_limit.value,
+            snapshot.cooling_limit.value,
+            zone.hysteresis,
+            self.building.settings.auto_fan_step,
+            previous=previous,
+        )
+
     def _preview_auto_fans(self) -> None:
         """The speed the automatic fan would choose now, for every room with
         indoor units (0.13.3), also in simulation or with another fan mode.
@@ -1236,18 +1293,8 @@ class BuildingRuntime(
                     demand, "off"
                 )
             )
-            snapshot = self.zone_snapshots[zone.id]
-            previews[zone.id] = auto_fan(
-                speeds,
-                mode,
-                snapshot.temperature.value
-                if snapshot.temperature.quality == "valid"
-                else None,
-                snapshot.heating_limit.value,
-                snapshot.cooling_limit.value,
-                zone.hysteresis,
-                self.building.settings.auto_fan_step,
-                previous=running.fan_mode if running else None,
+            previews[zone.id] = self._auto_fan_speed(
+                zone, speeds, mode, running.fan_mode if running else None
             )
         self.auto_fans = previews
 
@@ -1282,19 +1329,9 @@ class BuildingRuntime(
         # The thermostat's standard name (0.13.2) -> the unit's own speed.
         desired = unit_fan(self.fan_choice(item.zone_id), supported)
         if self.zone_auto_fan(item.zone_id):
-            snapshot = self.zone_snapshots[item.zone_id]
             zone = next(z for z in self.building.zones if z.id == item.zone_id)
-            desired = auto_fan(
-                fan_speeds(supported),
-                unit.selected_mode,
-                snapshot.temperature.value
-                if snapshot.temperature.quality == "valid"
-                else None,
-                snapshot.heating_limit.value,
-                snapshot.cooling_limit.value,
-                zone.hysteresis,
-                self.building.settings.auto_fan_step,
-                previous=unit.fan_mode,
+            desired = self._auto_fan_speed(
+                zone, fan_speeds(supported), unit.selected_mode, unit.fan_mode
             )
             self.auto_fans[item.zone_id] = desired
             last = self.fan_sent_at.get(item.id)

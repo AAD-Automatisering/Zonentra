@@ -134,7 +134,7 @@ def test_fan_speeds_exclude_off_and_auto():
         ("heat", 20.7, "50%"),  # 0.6 below.
         ("heat", 20.2, "75%"),  # 1.1 below.
         ("heat", 18.0, "100%"),  # Far below: highest.
-        ("cool", 24.5, "50%"),  # 0.8 above 23.7.
+        ("cool", 24.45, "50%"),  # 0.75 above 23.7.
         ("cool", 27.0, "100%"),
         ("dry", 27.0, "25%"),  # No heating or cooling: lowest.
         ("heat", None, "25%"),  # No room temperature: lowest.
@@ -161,7 +161,7 @@ def test_auto_fan_step_size(step, room, expected):
 def test_auto_fan_step_setting():
     from custom_components.zonentra.models import build_model
 
-    assert build_model("b", "B", {}).settings.auto_fan_step == 0.5
+    assert build_model("b", "B", {}).settings.auto_fan_step == 0.4
     settings = {"building": {"auto_fan_step": 1.0}}
     assert build_model("b", "B", settings).settings.auto_fan_step == 1.0
     for wrong in (0.1, 3):
@@ -245,10 +245,10 @@ def test_auto_fan_hysteresis_retains_speed_near_boundary(mode):
         room = 21.3 - distance if mode == "heat" else 23.7 + distance
         return auto_fan(SPEEDS, mode, room, 21, 24, 0.3, previous=previous)
 
-    assert choose(0.51, "25%") == "25%"
-    assert choose(0.49, "50%") == "50%"
-    assert choose(0.65, "25%") == "50%"
-    assert choose(0.35, "50%") == "25%"
+    assert choose(0.41, "25%") == "25%"
+    assert choose(0.39, "50%") == "50%"
+    assert choose(0.55, "25%") == "50%"
+    assert choose(0.25, "50%") == "25%"
     assert choose(2.0, "25%") == "100%"
     assert choose(0, "100%") == "25%"
 

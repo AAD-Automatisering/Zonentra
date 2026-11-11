@@ -54,10 +54,9 @@ async def test_room_state_sensors(hass, freezer):
     central, zone = await office(hass, freezer, mocks)
     # 0.13.3: no motion sensor and no building presence: no presence sensor.
     assert entity(hass, "sensor", f"{zone.entry_id}_presence") is None
-    # 21 °C, heating target 22.3 -> 1.3 °C away -> third speed. Since 0.13.5
-    # the automatic fan is the default (in use, also in simulation).
+    # 21 °C, heating target 22.3 -> 1.3 °C away -> highest speed at 0.4 °C/step.
     fan = state(hass, zone, "auto_fan")
-    assert (fan.state, fan.attributes["in_use"]) == ("75%", True)
+    assert (fan.state, fan.attributes["in_use"]) == ("100%", True)
     assert state(hass, zone, "safety").state == "safe"
     assert state(hass, zone, "window").state == "closed"
     assert float(state(hass, zone, "ema_temperature").state) == 21
@@ -134,10 +133,42 @@ async def test_automatic_fan(hass, freezer):
     runtime.set_thermostat("west", regulation=True, fan_mode="auto")
     await later(hass, freezer, minutes=4)
     await unit(hass, "heat", **KNX)
-    # 21 °C, target 22.3: 1.3 °C away -> third speed.
-    assert ("set_fan_mode", "75%") in calls(mocks)
-    assert state(hass, zone, "auto_fan").state == "75%"
+    # 21 °C, target 22.3: 1.3 °C away -> highest speed.
+    assert ("set_fan_mode", "100%") in calls(mocks)
+    assert state(hass, zone, "auto_fan").state == "100%"
     assert EQUIPMENT not in runtime.overrides
+
+
+async def test_automatic_fan_boosts_when_the_room_fails_to_warm(hass, freezer):
+    mocks = await mock_climate(hass)
+    central, zone = await office(
+        hass, freezer, mocks, use_building_parameters=False, hysteresis=0.2
+    )
+    runtime = central.runtime_data
+    runtime.set_thermostat("west", regulation=True)
+    await later(hass, freezer, minutes=4)
+    hass.states.async_set("sensor.west_temperature", "20.95", CELSIUS)
+    attrs = {**KNX, "fan_mode": "75%", "hvac_action": "heating"}
+    await unit(hass, "heat", **attrs)
+    assert state(hass, zone, "heating_progress").state == "monitoring"
+    assert state(hass, zone, "auto_fan").state == "75%"
+    assert not mocks["set_fan_mode"]
+
+    await later(hass, freezer, minutes=61)
+    assert state(hass, zone, "heating_progress").state == "unknown"
+    assert not mocks["set_fan_mode"]
+    hass.states.async_set("sensor.west_temperature", "21.0", CELSIUS)
+    await hass.async_block_till_done()
+    assert state(hass, zone, "heating_progress").state == "insufficient"
+    assert state(hass, zone, "auto_fan").state == "100%"
+    assert [c.data["fan_mode"] for c in mocks["set_fan_mode"]] == ["100%"]
+
+    await unit(hass, "heat", **{**attrs, "fan_mode": "100%"})
+    await later(hass, freezer, minutes=6)
+    hass.states.async_set("sensor.west_temperature", "21.55", CELSIUS)
+    await hass.async_block_till_done()
+    assert state(hass, zone, "heating_progress").state == "adequate"
+    assert [c.data["fan_mode"] for c in mocks["set_fan_mode"]] == ["100%", "50%"]
 
 
 async def test_vane_follows_cooling_and_heating(hass, freezer):
@@ -354,15 +385,15 @@ async def test_automatic_fan_does_not_hunt_after_feedback_and_interval(hass, fre
             runtime.refresh()
 
         # Keep a heating cycle active, close to the first fan-speed boundary.
-        temperature(21.79)
+        temperature(21.89)
         runtime.set_thermostat("west", regulation=True)
         await hass.async_block_till_done()
         assert not mocks["set_fan_mode"]
         assert runtime.auto_fans["west"] == "25%"
-        temperature(21.81)
+        temperature(21.91)
         await hass.async_block_till_done()
         assert not mocks["set_fan_mode"]
-        temperature(21.65)
+        temperature(21.75)
         await hass.async_block_till_done()
         assert [c.data["fan_mode"] for c in mocks["set_fan_mode"]] == ["50%"]
         source = hass.states.get(UNIT)
@@ -370,12 +401,12 @@ async def test_automatic_fan_does_not_hunt_after_feedback_and_interval(hass, fre
         runtime.refresh()
         await hass.async_block_till_done()
         freezer.tick(301)
-        for value in (21.79, 21.81, 21.79):
+        for value in (21.89, 21.91, 21.89):
             temperature(value)
             await hass.async_block_till_done()
             assert runtime.auto_fans["west"] == "50%"
         assert len(mocks["set_fan_mode"]) == 1
-        temperature(21.95)
+        temperature(22.05)
         await hass.async_block_till_done()
         assert [c.data["fan_mode"] for c in mocks["set_fan_mode"]] == ["50%", "25%"]
     finally:

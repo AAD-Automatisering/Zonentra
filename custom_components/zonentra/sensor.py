@@ -84,9 +84,8 @@ def _zone_entities(hass, entry) -> list:
         entities.append(PresenceSensor(entry, zone, **shared))
     if options.get("calendar_entity"):
         entities.append(BookingSensor(entry, zone, **shared))
-    if options.get("floor_heating_entities") and options.get("indoor_units"):
-        entities.append(HeatingProgressSensor(entry, zone, **shared))
     if options.get("indoor_units"):
+        entities.append(HeatingProgressSensor(entry, zone, **shared))
         entities.append(RegulatedSetpointSensor(entry, zone, **shared))
         entities.append(SetpointStatusSensor(entry, zone, **shared))
         entities.append(AutoFanSensor(entry, zone, **shared))
@@ -1207,7 +1206,7 @@ class FloorHeatingSensor(ZonentraDiagnosticSensor):
 
 
 class HeatingProgressSensor(ZoneStateSensor):
-    """Visible warning only: never automatically request additional gas heat."""
+    """Report the room's warming progress."""
 
     key = "heating_progress"
     _attr_translation_key = "heating_progress"

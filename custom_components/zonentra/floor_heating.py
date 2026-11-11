@@ -29,7 +29,7 @@ def heating_progress(previous, now, *, temperature, target, reported_at, watchin
     """Signal only with continuous reported heating and a newer room report.
 
     This is a room comfort observation, not an efficiency/fault measurement.
-    Gas targets and HVAC commands are never changed by this signal.
+    The room fan can use this signal independently of the floor thermostat.
     """
     if not watching:
         return HeatingProgress("idle")

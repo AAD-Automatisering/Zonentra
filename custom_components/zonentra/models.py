@@ -7,7 +7,7 @@ from dataclasses import field as dataclass_field
 from functools import cached_property
 from typing import Any
 
-from .const import KINDS
+from .const import AUTO_FAN_STEP, KINDS
 from .migration import (
     BAND_FIELDS,
     FLOOR_FIELDS,
@@ -142,7 +142,7 @@ class BuildingSettings:
     window_delay_seconds: float = 30.0
     floor_window_resume_delay_minutes: float = 5.0
     # 0.13.1 automatic fan: °C of distance to the target per fan speed step.
-    auto_fan_step: float = 0.5
+    auto_fan_step: float = AUTO_FAN_STEP
     # 0.11 screens: solar power says whether the sun shines; sun.sun where.
     sun_power_entity: str | None = None
     sun_power_threshold: float = 1000.0  # W
