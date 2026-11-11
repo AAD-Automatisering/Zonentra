@@ -102,6 +102,7 @@ from .thermostat import (
 from .wind import WindMemory, WindProtection
 
 _LOGGER = logging.getLogger(__name__)
+UNIT_RECOVERY_SECONDS = 5
 UNIT_RUNNING = ("heat", "cool", "dry", "fan_only")
 ZONE_LIMIT_KEYS = (
     "heating_limit",
@@ -242,6 +243,7 @@ class BuildingRuntime(
         self.room_controller_use: set[str] = set()
         self.workday_presence_suppressed: set[str] = set()
         self.last_transitions = {}
+        self.unit_recovery_until: dict[str, datetime] = {}
         self.manual_events = {}
         self.coordination_memories = {}
         self.coordinations = {}
@@ -703,6 +705,7 @@ class BuildingRuntime(
         "room_controller_use",
         "workday_presence_suppressed",
         "last_transitions",
+        "unit_recovery_until",
         "manual_events",
         "command_tracker",
         "setpoint_tracker",
@@ -1981,14 +1984,30 @@ class BuildingRuntime(
             trusted = new is not None and not (
                 new.attributes.get("restored") or new.attributes.get("assumed_state")
             )
+            origin = _origin(event)
             transition = classify_transition(
                 old_value,
                 new_value,
                 old_present=old is not None,
                 trusted=trusted,
                 zonentra_initiated=initiated,
-                origin=_origin(event),
+                origin=origin,
             )
+            # A gateway can briefly report off before its real state is read.
+            # Attribute reports while off leave the original deadline in place.
+            if new_value == "off" and transition in ("initial", "from_unavailable"):
+                self.unit_recovery_until[item.id] = now + timedelta(
+                    seconds=UNIT_RECOVERY_SECONDS
+                )
+            elif new_value != "off":
+                recovery_until = self.unit_recovery_until.pop(item.id, None)
+                if (
+                    transition == "manual_on"
+                    and origin == "device"
+                    and recovery_until is not None
+                    and now < recovery_until
+                ):
+                    transition = "availability_recovery"
             if transition == "attribute_update" and trusted:
                 transition = self._setpoint_transition(entity_id, old, new, event, now)
             if transition in ("manual_on", "manual_off", "manual_setpoint"):
@@ -1997,7 +2016,7 @@ class BuildingRuntime(
                     "transition": transition,
                     "from_mode": old_value,
                     "to_mode": new_value,
-                    "origin": _origin(event),
+                    "origin": origin,
                 }
             transitions[item.id] = transition
             self.last_transitions[item.id] = (transitions[item.id], now)

@@ -383,6 +383,7 @@ Bron: de state-events van de gekoppelde climate-entiteit. Classificatie van éé
 | actief → andere actieve modus | mode_change | ongewijzigd (timer niet verlengd) |
 | zelfde state, andere attributen | attribute_update | ongewijzigd |
 | unknown/unavailable → actief | from_unavailable | nooit |
+| off → actief binnen 5 s nadat de unit als off beschikbaar werd, zonder gebruikers- of automatiseringscontext | availability_recovery | nooit |
 | entiteit verschijnt / HA-start / setup | initial / geen event | nooit |
 | restored of assumed_state | untrusted | nooit |
 | overeenkomend met een Zonentra-commando | zonentra_initiated | nooit |
@@ -390,8 +391,8 @@ Bron: de state-events van de gekoppelde climate-entiteit. Classificatie van éé
 Same-value-rapporten (`state_reported`) en timers zijn geen overgangen.
 **Beperking:** HA-events bewijzen de herkomst niet. De runtime herkent een
 HA-gebruiker aan `user_id` en een automation/script aan `parent_id`. Een herkende
-automation die een unit aanzet start geen override; een overgang met kale context
-kan van een roomcontroller komen en telt als handmatige bediening.
+automation die een unit aanzet start geen override. Een overgang met kale context
+kan van een roomcontroller komen en telt buiten de herstelperiode als handmatige bediening.
 
 `CommandTracker` registreert voor de actieve aansturing per entiteit de
 verwachte state met een begrensde bevestigingsperiode (60 s). Alleen een

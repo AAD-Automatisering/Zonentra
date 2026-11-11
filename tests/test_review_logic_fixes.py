@@ -6,6 +6,7 @@ from datetime import timedelta
 import pytest
 from homeassistant.core import Context
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers.event import async_track_state_change_event
 from homeassistant.util import dt as dt_util
 from pytest_homeassistant_custom_component.common import async_mock_service
 
@@ -130,6 +131,45 @@ async def test_manual_override_pauses_automatic_fan_changes(hass):
     assert runtime.setpoint_plans["ac"].status == "manual_override"
     assert not mocks["set_fan_mode"]
     runtime.close()
+
+
+@pytest.mark.parametrize(
+    ("delay", "context", "manual"),
+    [
+        (0.86, None, False),
+        (5, None, True),
+        (0.86, Context(user_id="user"), True),
+    ],
+)
+async def test_airco_off_during_recovery_does_not_imply_manual_start(
+    hass, freezer, delay, context, manual
+):
+    await mock_climate(hass)
+    runtime = standalone(hass)
+    unsub = async_track_state_change_event(hass, [UNIT], runtime.refresh)
+    try:
+        runtime.set_thermostat("west", regulation=True)
+        attrs = dict(hass.states.get(UNIT).attributes)
+        hass.states.async_set(UNIT, "unavailable")
+        await hass.async_block_till_done()
+        hass.states.async_set(UNIT, "off", {"hvac_action": "off"})
+        await hass.async_block_till_done()
+        freezer.tick(delay - 0.1)
+        hass.states.async_set(UNIT, "off", {"hvac_action": "off", "temperature": 22})
+        await hass.async_block_till_done()
+        freezer.tick(0.1)
+        hass.states.async_set(UNIT, "heat", attrs, context=context)
+        await hass.async_block_till_done()
+        assert ("ac" in runtime.overrides) is manual
+        assert ("ac" in runtime.manual_events) is manual
+        plan = runtime.setpoint_plans["ac"]
+        if manual:
+            assert plan.status == "manual_override"
+        else:
+            assert plan.setpoint is not None
+    finally:
+        unsub()
+        runtime.close()
 
 
 async def test_room_disable_blocks_queued_room_command(hass):
