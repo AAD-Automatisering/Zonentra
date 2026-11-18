@@ -37,9 +37,24 @@ NEW_BUILDING_DEFAULTS = {
 }
 
 
+def migrate_workday_presence(
+    central: dict, zones: list[dict]
+) -> tuple[dict, list[dict]]:
+    """Move the legacy central room choice to a per-room morning option."""
+    central, zones = deepcopy(central), deepcopy(zones)
+    selected = central.get("building", {}).pop("workday_presence_zone_id", None)
+    for zone in zones:
+        if selected and zone.get("id") == selected:
+            zone.setdefault("workday_morning_comfort", True)
+    return central, zones
+
+
 def migrate_options(options: dict) -> dict:
     """Keep existing room policy explicit; never guess a shared weather source."""
     result = deepcopy(options)
+    if "zones" in result:
+        result, zones = migrate_workday_presence(result, result["zones"])
+        result["zones"] = zones
     # Remove obsolete observation-only links and legacy ventilation equipment
     # before validation, without touching the physical entities.
     for field in ("ventilation_entities", "humidity_entity", "co2_entity"):

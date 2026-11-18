@@ -41,11 +41,13 @@
           "use_building_preconditioning": "Gebruik centrale instellingen voor afspraakvoorbereiding",
           "use_building_floor_heating": "Centrale instellingen voor vloerverwarming gebruiken",
           "native_regulation": "Proef: airco tijdens comfort zelf laten regelen",
-          "floor_demand_entity": "Stelgrootte verdelergroep in % (optioneel)"
+          "floor_demand_entity": "Stelgrootte verdelergroep in % (optioneel)",
+          "workday_morning_comfort": "Comfort bij alarm uit in de ochtend"
         },
         "data_description": {
           "native_regulation": "Alleen voor deze ruimte. Een draaiende airco blijft bij bereikte temperatuur ingeschakeld, met rustige temperatuurcorrecties. Eco/afwezig, open ramen, handmatige bediening en groepsbeveiliging blijven gelden. De ventilatorregeling verandert niet. Uit = bestaande regeling.",
-          "floor_demand_entity": "0% wordt getoond als geen warmtevraag en een waarde boven 0% als verwarmen. Dit volgt de gemelde stelgrootte van de verdelergroep."
+          "floor_demand_entity": "0% wordt getoond als geen warmtevraag en een waarde boven 0% als verwarmen. Dit volgt de gemelde stelgrootte van de verdelergroep.",
+          "workday_morning_comfort": "Geef deze ruimte bij alarm uit automatisch comfort vóór 12:00 op werkdagen, ook buiten openingstijden. Om 12:00 vervalt deze uitzondering. Vereist centraal ingestelde openingstijden, gebouwaanwezigheid en een betrouwbare werkdag-sensor voor vandaag. Werkt niet in het weekend of in ruimtes met een agenda. Standaard uit."
         }
       },
       "zone_parameters": {
@@ -123,13 +125,11 @@
           "motion_delay_seconds": "Bewegingsdetectie-vertraging (seconden)",
           "motion_off_delay_minutes": "Ruimte bezet na laatste beweging (minuten)",
           "office_schedule_entity": "Openingstijden kantoor (optioneel)",
-          "workday_entity": "Werkdag-sensor voor vandaag (optioneel)",
-          "workday_presence_zone_id": "Ruimte bij alarm uit op werkdagen (optioneel)"
+          "workday_entity": "Werkdag-sensor voor vandaag (optioneel)"
         },
         "data_description": {
           "office_schedule_entity": "Selecteer een schedule-helper. Gewone ruimtes worden automatisch voorbereid vóór opening, ook bij afwezigheid. Na opening geldt maximaal 15 minuten aankomsttijd. Daarna bepalen aanwezigheid en beweging de temperatuur. Ruimtes met een agenda blijven hun afspraken volgen. Ruimtes die tijdens openingstijden bij gebouwaanwezigheid op comfort stonden, blijven na sluiting op comfort tot het alarm aangaat. Een nieuwe aankomst buiten openingstijden activeert dit niet.",
-          "workday_entity": "Los van de openingstijden: aan = werkdag, uit = geen werkdag. Kies een sensor voor vandaag (offset 0). Op niet-werkdagen of bij een onbruikbare sensor vervallen automatische kantoorvoorbereiding en aankomstmarge. Aanwezigheid en agenda-afspraken blijven werken. Zonder sensor geldt alleen het schema.",
-          "workday_presence_zone_id": "Alleen deze ruimte krijgt bij alarm uit automatisch comfort buiten openingstijden. Vereist openingstijden, gebouwaanwezigheid en een werkdag-sensor voor vandaag die aan staat. Nooit op zaterdag of zondag. Kies — voor geen uitzondering. Agenda’s en handmatige bediening blijven afzonderlijk werken."
+          "workday_entity": "Los van de openingstijden: aan = werkdag, uit = geen werkdag. Kies een sensor voor vandaag (offset 0). Op niet-werkdagen of bij een onbruikbare sensor vervallen automatische kantoorvoorbereiding en aankomstmarge. Aanwezigheid en agenda-afspraken blijven werken. Zonder sensor geldt alleen het schema."
         },
         "submit": "Toepassen en terug"
       },
@@ -255,9 +255,13 @@
         "data": {
           "temperature_entity": "Ruimtetemperatuursensor",
           "occupancy_entity": "Bewegingssensor (optioneel; zonder beweging geldt de eco-band)",
-          "contact_entities": "Raam- en deurcontacten of roldeuren (optioneel)"
+          "contact_entities": "Raam- en deurcontacten of roldeuren (optioneel)",
+          "workday_morning_comfort": "Comfort bij alarm uit in de ochtend"
         },
-        "submit": "Toepassen en terug"
+        "submit": "Toepassen en terug",
+        "data_description": {
+          "workday_morning_comfort": "Geef deze ruimte bij alarm uit automatisch comfort vóór 12:00 op werkdagen, ook buiten openingstijden. Om 12:00 vervalt deze uitzondering. Vereist centraal ingestelde openingstijden, gebouwaanwezigheid en een betrouwbare werkdag-sensor voor vandaag. Werkt niet in het weekend of in ruimtes met een agenda. Standaard uit."
+        }
       },
       "zone_hvac": {
         "title": "Airco’s en lamellen",
@@ -275,6 +279,7 @@
         "title": "Regelparameters",
         "description": "Gebruik centrale regelparameters of zet die keuze uit om de onderstaande lokale waarden te gebruiken. Lokale waarden blijven bewaard bij omschakelen naar centraal.",
         "data": {
+          "heating_minimum_setpoint": "Minimaal aircosetpoint bij opwarmen",
           "use_building_parameters": "Centrale regelparameters gebruiken",
           "hysteresis": "Temperatuurhysterese (°C)",
           "sensor_validation": "Sensorvalidatie (state_based = standaard; update_based alleen voor periodiek rapporterende sensoren)",
@@ -283,6 +288,7 @@
         },
         "submit": "Toepassen en terug",
         "data_description": {
+          "heating_minimum_setpoint": "Geldt bij warmtevraag in Comfort zolang de kamer onder haar doel zit. Laat leeg om uit te schakelen.",
           "native_regulation": "Alleen voor deze ruimte. Een draaiende airco blijft bij bereikte temperatuur ingeschakeld, met rustige temperatuurcorrecties. Eco/afwezig, open ramen, handmatige bediening en groepsbeveiliging blijven gelden. De ventilatorregeling verandert niet. Uit = bestaande regeling."
         }
       },

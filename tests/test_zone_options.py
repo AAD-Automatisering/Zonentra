@@ -38,7 +38,7 @@ def test_room_subjects_cover_each_editable_field_once():
             ),
         }
     }
-    all_fields.add("floor_heating_follow_presets")
+    all_fields.update(("floor_heating_follow_presets", "heating_minimum_setpoint"))
     covered = []
     for section in ZONE_OPTION_SECTIONS:
         fields = {marker.schema for marker in zone_section_fields(section, [])}

@@ -10,7 +10,13 @@ from custom_components.zonentra.diagnostics import async_get_config_entry_diagno
 from custom_components.zonentra.models import build_model
 from tests.test_bookings_runtime import CALENDAR, calendar_service, later
 from tests.test_central_options import open_section
-from tests.test_entry_layout import CELSIUS, add_zone, setup_central, zone_options
+from tests.test_entry_layout import (
+    CELSIUS,
+    add_zone,
+    edit_zone_subject,
+    setup_central,
+    zone_options,
+)
 from tests.test_thermostat_runtime import clear, mock_climate
 
 # 09:00 in HA's default US/Pacific timezone keeps ordinary openings on today.
@@ -559,14 +565,12 @@ async def test_explicit_thermostat_choice_ends_room_controller_use(hass, changes
 
 async def select_workday_room(hass, central, selected="west", workday=WORKDAY):
     flow = await open_section(hass, central, "presence")
-    options = flow["data_schema"].schema["workday_presence_zone_id"].config["options"]
-    assert {"value": "west", "label": "West"} in options
+    assert "workday_presence_zone_id" not in flow["data_schema"].schema
     flow = await hass.config_entries.options.async_configure(
         flow["flow_id"],
         {
             "office_schedule_entity": SCHEDULE,
             "presence_entity": central.options["building"]["presence_entity"],
-            "workday_presence_zone_id": selected,
             **({"workday_entity": workday} if workday else {}),
         },
     )
@@ -574,6 +578,24 @@ async def select_workday_room(hass, central, selected="west", workday=WORKDAY):
         flow["flow_id"], {"next_step_id": "finish"}
     )
     await hass.async_block_till_done()
+    room = next(
+        entry
+        for entry in hass.config_entries.async_entries("zonentra")
+        if entry.data.get("entry_type") == "zone"
+        and entry.options["id"] == (selected or "west")
+    )
+    flow = await hass.config_entries.options.async_init(room.entry_id)
+    flow = await edit_zone_subject(
+        hass,
+        flow,
+        "zone_sensors",
+        {**dict(room.options), "workday_morning_comfort": bool(selected)},
+    )
+    await hass.config_entries.options.async_configure(
+        flow["flow_id"], {"next_step_id": "finish"}
+    )
+    await hass.async_block_till_done()
+    assert room.options["workday_morning_comfort"] == bool(selected)
     return central.runtime_data
 
 
@@ -653,7 +675,7 @@ async def test_workday_room_requires_sensor_and_can_be_cleared(hass):
     runtime = await select_workday_room(hass, central)
     assert runtime.zone_bands["west"][1] == "workday_presence"
     runtime = await select_workday_room(hass, central, selected="")
-    assert runtime.building.settings.workday_presence_zone_id is None
+    assert not runtime.building.zones[0].workday_morning_comfort
     assert runtime.zone_bands["west"][0] == "away"
 
 
@@ -685,9 +707,9 @@ async def test_manual_off_suppresses_workday_exception_until_next_alarm_cycle(
     assert runtime.zone_bands["west"][1] == "workday_presence"
 
 
-async def test_workday_exception_ends_at_local_saturday_midnight(hass, freezer):
+async def test_workday_exception_ends_at_local_noon(hass, freezer):
     await hass.config.async_set_time_zone("Europe/Amsterdam")
-    freezer.move_to("2026-10-23T21:30:00+00:00")  # Friday 23:30 local.
+    freezer.move_to("2026-10-23T09:30:00+00:00")  # Friday 11:30 local.
     central, _, _ = await office(hass, start=3000, workday="on")
     runtime = await select_workday_room(hass, central)
     hass.states.async_set(PRESENCE, "on")
@@ -697,11 +719,110 @@ async def test_workday_exception_ends_at_local_saturday_midnight(hass, freezer):
     assert runtime.zone_bands["west"][0] == "away"
 
 
-async def test_workday_room_selection_is_redacted(hass):
-    central, _, _ = await office(hass, start=300, workday="on")
+async def test_workday_room_setting_is_visible_in_diagnostics(hass):
+    central, room, _ = await office(hass, start=300, workday="on")
     await select_workday_room(hass, central)
-    diagnostic = await async_get_config_entry_diagnostics(hass, central)
-    assert '"workday_presence_zone_id": "**REDACTED**"' in json.dumps(diagnostic)
+    diagnostic = await async_get_config_entry_diagnostics(hass, room)
+    assert '"workday_morning_comfort": true' in json.dumps(diagnostic)
+    assert "workday_presence_zone_id" not in json.dumps(diagnostic)
+
+
+@pytest.mark.parametrize(
+    "instant,expected",
+    [
+        ("2026-11-18T10:59:00+00:00", "comfort"),
+        ("2026-11-18T11:00:00+00:00", "away"),
+        ("2026-11-18T18:00:00+00:00", "away"),
+        ("2026-07-15T09:59:00+00:00", "comfort"),
+        ("2026-07-15T10:00:00+00:00", "away"),
+    ],
+)
+async def test_workday_arrival_uses_local_morning_only(
+    hass, freezer, instant, expected
+):
+    await hass.config.async_set_time_zone("Europe/Amsterdam")
+    freezer.move_to(instant)
+    alarm = "alarm_control_panel.office"
+    central, _, _ = await office(
+        hass,
+        start=3000,
+        workday="on",
+        presence_entity=alarm,
+        workday_morning_comfort=True,
+    )
+    hass.states.async_set(alarm, "disarmed")
+    await hass.async_block_till_done()
+    assert central.runtime_data.zone_bands["west"][0] == expected
+
+
+async def test_morning_option_can_enable_multiple_rooms_and_stop_one(hass):
+    central, _, _ = await office(
+        hass, start=300, workday="on", workday_morning_comfort=True
+    )
+    hass.states.async_set("sensor.east_temperature", "21", CELSIUS)
+    hass.states.async_set("climate.east_ac", "off")
+    await add_zone(
+        hass,
+        zone_options(
+            "east", "climate.east_ac", group_id=None, workday_morning_comfort=True
+        ),
+    )
+    hass.states.async_set(PRESENCE, "on")
+    await hass.async_block_till_done()
+    runtime = central.runtime_data
+    assert runtime.zone_bands["west"] == ("comfort", "workday_presence")
+    assert runtime.zone_bands["east"] == ("comfort", "workday_presence")
+    runtime.command_tracker.register("climate.west_ac", "heat", dt_util.utcnow())
+    hass.states.async_set("climate.west_ac", "heat")
+    await hass.async_block_till_done()
+    hass.states.async_set("climate.west_ac", "off")
+    await hass.async_block_till_done()
+    assert runtime.zone_bands["west"][0] == "away"
+    assert runtime.zone_bands["east"] == ("comfort", "workday_presence")
+
+
+@pytest.mark.parametrize("explicit", [None, False])
+async def test_legacy_workday_room_migrates_once_and_preserves_explicit_choice(
+    hass, explicit
+):
+    central, room, _ = await office(hass, start=300, workday="on")
+    if explicit is not None:
+        hass.config_entries.async_update_entry(
+            room, options={**dict(room.options), "workday_morning_comfort": explicit}
+        )
+        await hass.async_block_till_done()
+    hass.config_entries.async_update_entry(
+        central,
+        options={
+            **dict(central.options),
+            "building": {
+                **dict(central.options["building"]),
+                "workday_presence_zone_id": "west",
+            },
+        },
+    )
+    assert await hass.config_entries.async_reload(central.entry_id)
+    await hass.async_block_till_done()
+    assert "workday_presence_zone_id" not in central.options["building"]
+    assert room.options["workday_morning_comfort"] is (explicit is None)
+    assert await hass.config_entries.async_reload(central.entry_id)
+    await hass.async_block_till_done()
+    assert room.options["workday_morning_comfort"] is (explicit is None)
+
+
+async def test_calendar_room_does_not_use_morning_exception(hass):
+    hass.states.async_set(CALENDAR, "off")
+    calendar_service(hass, {CALENDAR: {"events": []}})
+    central, _, _ = await office(
+        hass,
+        start=300,
+        workday="on",
+        calendar_entity=CALENDAR,
+        workday_morning_comfort=True,
+    )
+    hass.states.async_set(PRESENCE, "on")
+    await hass.async_block_till_done()
+    assert central.runtime_data.zone_bands["west"] == ("eco", "no_booking")
 
 
 async def test_room_controller_use_keeps_setpoint_fan_and_learning_active(
@@ -918,3 +1039,36 @@ async def test_continued_office_use_ends_when_thermostat_is_turned_off(hass):
     assert not runtime.office_use
     runtime.set_thermostat("west", hvac_mode="heat_cool")
     assert runtime.zone_bands["west"][0] == "away"
+
+
+@pytest.mark.parametrize("motion", [None, "unknown", "unavailable"])
+async def test_unknown_motion_does_not_restore_comfort_after_alarm_cycle(
+    hass, freezer, motion
+):
+    alarm = "alarm_control_panel.office"
+    sensor = "binary_sensor.west_motion"
+    if motion is not None:
+        hass.states.async_set(sensor, motion)
+    central, _, opening = await office(
+        hass, start=300, presence_entity=alarm, occupancy_entity=sensor
+    )
+    runtime = central.runtime_data
+    hass.states.async_set(alarm, "disarmed")
+    hass.states.async_set(SCHEDULE, "on", {"next_event": opening})
+    await hass.async_block_till_done()
+    # During opening hours, retain the normal fallback for an unusable sensor.
+    assert runtime.zone_bands["west"] == ("comfort", "motion_sensor_unknown")
+    assert "west" in runtime.office_use
+    hass.states.async_set(SCHEDULE, "off", {"next_event": opening + timedelta(days=1)})
+    hass.states.async_set(alarm, "armed_away")
+    await hass.async_block_till_done()
+    assert not runtime.office_use
+    assert runtime.zone_bands["west"] == ("away", "building_absent")
+    hass.states.async_set(alarm, "disarmed")
+    await hass.async_block_till_done()
+    assert runtime.zone_bands["west"] == ("away", "outside_office_hours")
+    # A recovered sensor can still provide real evidence of room use.
+    hass.states.async_set(sensor, "on")
+    await hass.async_block_till_done()
+    await later(hass, freezer, seconds=runtime.building.settings.motion_delay_seconds)
+    assert runtime.zone_bands["west"] == ("comfort", "motion")

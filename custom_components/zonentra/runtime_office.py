@@ -64,20 +64,22 @@ class OfficeRuntimeMixin:
                     self.office_use_suppressed.add(item.zone_id)
                 elif transitions.get(item.id) == "manual_on":
                     self.office_use_suppressed.discard(item.zone_id)
-        selected = settings.workday_presence_zone_id
-        self.workday_presence_suppressed.intersection_update({selected})
+        selected = {
+            zone.id
+            for zone in self.building.zones
+            if zone.workday_morning_comfort and not zone.calendar_entity
+        }
+        self.workday_presence_suppressed.intersection_update(selected)
         if presence == "absent":
             self.workday_presence_suppressed.clear()
-        elif (
-            presence == "present"
-            and selected
-            and any(
-                item.zone_id == selected and transitions.get(item.id) == "manual_off"
+        elif presence == "present":
+            self.workday_presence_suppressed.update(
+                item.zone_id
                 for item in self.building.equipment
                 if item.kind == "hvac"
+                and item.zone_id in selected
+                and transitions.get(item.id) == "manual_off"
             )
-        ):
-            self.workday_presence_suppressed.add(selected)
         enabled = bool(
             settings.office_schedule_entity
             and settings.presence_entity
@@ -203,11 +205,13 @@ class OfficeRuntimeMixin:
                 return replace(occupancy, mode="comfort", reason="room_controller_use")
             settings = self.building.settings
             workday = sources.get(settings.workday_entity)
+            local_now = dt_util.as_local(now)
             if (
-                zone.id == settings.workday_presence_zone_id
+                zone.workday_morning_comfort
                 and not zone.calendar_entity
                 and occupancy.presence == "present"
-                and dt_util.as_local(now).weekday() < 5
+                and local_now.weekday() < 5
+                and local_now.hour < 12
                 and workday is not None
                 and workday.trustworthy
                 and workday.state == "on"
@@ -216,9 +220,7 @@ class OfficeRuntimeMixin:
                 # Presence only selects this room; ordinary regulation (including
                 # setpoint correction) remains active, without a manual override.
                 self._office_checks.append(
-                    dt_util.start_of_local_day(
-                        dt_util.as_local(now) + timedelta(days=1)
-                    )
+                    local_now.replace(hour=12, minute=0, second=0, microsecond=0)
                 )
                 return replace(occupancy, mode="comfort", reason="workday_presence")
             if (
@@ -228,8 +230,14 @@ class OfficeRuntimeMixin:
                 and occupancy.reason in ("present", "default")
             ):
                 return replace(occupancy, mode="comfort", reason="office_continued_use")
-            # Bookings and room motion retain their own occupancy evidence.
-            if plan.status != "open" and occupancy.reason in ("present", "default"):
+            # Only confirmed room motion is evidence of use. A broken sensor's
+            # comfort fallback must not reopen a room outside office hours.
+            # Bookings retain their own occupancy evidence.
+            if plan.status != "open" and occupancy.reason in (
+                "present",
+                "default",
+                "motion_sensor_unknown",
+            ):
                 return replace(occupancy, mode="away", reason="outside_office_hours")
         return occupancy
 

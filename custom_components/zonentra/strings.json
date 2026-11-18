@@ -41,11 +41,13 @@
           "use_building_preconditioning": "Use central meeting preparation settings",
           "use_building_floor_heating": "Use central floor heating settings",
           "native_regulation": "Trial: let the air conditioner regulate during comfort",
-          "floor_demand_entity": "Manifold circuit control value in % (optional)"
+          "floor_demand_entity": "Manifold circuit control value in % (optional)",
+          "workday_morning_comfort": "Comfort on morning arrival"
         },
         "data_description": {
           "native_regulation": "Only this room. A running air conditioner stays enabled at the target, with slower temperature corrections. Eco/away, open windows, manual operation and group protection still apply. Fan control is unchanged. Off = existing control.",
-          "floor_demand_entity": "0% is displayed as no heat demand and a value above 0% as heating. This follows the reported control value of the manifold circuit."
+          "floor_demand_entity": "0% is displayed as no heat demand and a value above 0% as heating. This follows the reported control value of the manifold circuit.",
+          "workday_morning_comfort": "Automatically give this room comfort when the building is present before 12:00 on workdays, including outside opening hours. This exception ends at 12:00. Requires centrally configured opening hours, building presence and a reliable workday sensor for today. Excludes weekends and rooms with a calendar. Off by default."
         }
       },
       "zone_parameters": {
@@ -123,13 +125,11 @@
           "motion_delay_seconds": "Motion detection delay (seconds)",
           "motion_off_delay_minutes": "Time occupied after last motion (minutes)",
           "office_schedule_entity": "Office opening hours (optional)",
-          "workday_entity": "Workday sensor for today (optional)",
-          "workday_presence_zone_id": "Room to activate on workday arrival (optional)"
+          "workday_entity": "Workday sensor for today (optional)"
         },
         "data_description": {
           "office_schedule_entity": "Select a schedule helper. Ordinary rooms prepare automatically before opening, including while absent. A maximum 15-minute arrival grace follows opening; presence and motion then determine comfort. Calendar rooms continue to follow their bookings. Rooms observed in comfort while the building is present during opening hours stay in comfort after closing until the building becomes absent. A new arrival outside opening hours does not activate this continuation.",
-          "workday_entity": "Separate from opening hours: on = workday, off = non-workday. Choose a sensor for today (offset 0). On non-workdays or with an unusable sensor, office preparation and arrival grace are skipped. Presence and calendar bookings still work. Without a sensor, only the schedule applies.",
-          "workday_presence_zone_id": "Only this room receives automatic comfort outside opening hours when the building is present. Requires an opening-hours schedule, building presence and an on-state from today’s workday sensor. Never on Saturday or Sunday. Choose — to disable. Bookings and manual control remain independent."
+          "workday_entity": "Separate from opening hours: on = workday, off = non-workday. Choose a sensor for today (offset 0). On non-workdays or with an unusable sensor, office preparation and arrival grace are skipped. Presence and calendar bookings still work. Without a sensor, only the schedule applies."
         },
         "submit": "Apply and return"
       },
@@ -255,9 +255,13 @@
         "data": {
           "temperature_entity": "Room temperature sensor",
           "occupancy_entity": "Motion sensor (optional; without motion the zone uses the eco band)",
-          "contact_entities": "Window and door contacts or covers (optional)"
+          "contact_entities": "Window and door contacts or covers (optional)",
+          "workday_morning_comfort": "Comfort on morning arrival"
         },
-        "submit": "Apply and return"
+        "submit": "Apply and return",
+        "data_description": {
+          "workday_morning_comfort": "Automatically give this room comfort when the building is present before 12:00 on workdays, including outside opening hours. This exception ends at 12:00. Requires centrally configured opening hours, building presence and a reliable workday sensor for today. Excludes weekends and rooms with a calendar. Off by default."
+        }
       },
       "zone_hvac": {
         "title": "Air conditioners and vanes",
@@ -275,6 +279,7 @@
         "title": "Regulation parameters",
         "description": "Use central regulation parameters, or disable that choice to use the local values below. Local values are retained when switching to central.",
         "data": {
+          "heating_minimum_setpoint": "Minimum air conditioner setpoint while warming up",
           "use_building_parameters": "Use central regulation parameters",
           "hysteresis": "Temperature hysteresis (°C)",
           "sensor_validation": "Sensor validation (state_based = default; update_based only for periodically reporting sensors)",
@@ -283,6 +288,7 @@
         },
         "submit": "Apply and return",
         "data_description": {
+          "heating_minimum_setpoint": "Applies during comfort heating demand while the room is below its target. Leave blank to disable.",
           "native_regulation": "Only this room. A running air conditioner stays enabled at the target, with slower temperature corrections. Eco/away, open windows, manual operation and group protection still apply. Fan control is unchanged. Off = existing control."
         }
       },

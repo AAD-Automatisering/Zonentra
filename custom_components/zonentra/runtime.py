@@ -1572,6 +1572,10 @@ class BuildingRuntime(
             heating_extra=self.heating_corrections[item.id].extra
             if item.id in self.heating_corrections
             else 0.0,
+            heating_minimum=zone.heating_minimum_setpoint
+            if self.zone_bands[zone.id][0] == "comfort"
+            and self.zone_demands[zone.id].demand == "heating_demand"
+            else None,
             step=step,
             step_origin=(convert_temperature(0, step_unit) or 0)
             if step is not None and step > 0

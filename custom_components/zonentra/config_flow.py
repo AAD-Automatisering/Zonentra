@@ -120,7 +120,6 @@ def building_fields() -> dict:
         vol.Optional("presence_entity"): entity_selector(list(PRESENCE_DOMAINS)),
         vol.Optional("office_schedule_entity"): entity_selector("schedule"),
         vol.Optional("workday_entity"): entity_selector("binary_sensor"),
-        vol.Optional("workday_presence_zone_id"): choice([{"value": "", "label": "—"}]),
         vol.Optional("motion_delay_seconds"): numeric(0, 600, 1, "s"),
         vol.Optional("motion_off_delay_minutes"): numeric(1, 240, 1, "min"),
         # Room regulation (0.9): self-regulating setpoint of running units.
@@ -172,7 +171,6 @@ CENTRAL_SECTIONS = {
         "presence_entity",
         "office_schedule_entity",
         "workday_entity",
-        "workday_presence_zone_id",
         "motion_delay_seconds",
         "motion_off_delay_minutes",
     ),
@@ -290,6 +288,7 @@ def multi(domain):
 
 
 ZONE_DEFAULTS = {
+    "workday_morning_comfort": False,
     "native_regulation": False,
     "floor_heating_follow_presets": False,
     "weight": 1.0,
@@ -323,6 +322,7 @@ def zone_fields(groups: list[dict]) -> dict:
         vol.Optional("use_building_parameters"): selector.BooleanSelector(),
         vol.Optional("native_regulation"): selector.BooleanSelector(),
         vol.Optional("occupancy_entity"): entity_selector("binary_sensor"),
+        vol.Optional("workday_morning_comfort"): selector.BooleanSelector(),
         vol.Optional("calendar_entity"): entity_selector("calendar"),
         vol.Optional("use_building_preconditioning"): selector.BooleanSelector(),
         vol.Optional("use_building_floor_heating"): selector.BooleanSelector(),
@@ -351,6 +351,7 @@ ZONE_OPTION_SECTIONS = {
     "zone_sensors": (
         "temperature_entity",
         "occupancy_entity",
+        "workday_morning_comfort",
         "contact_entities",
     ),
     "zone_hvac": (
@@ -362,6 +363,7 @@ ZONE_OPTION_SECTIONS = {
     ),
     "zone_regulation": (
         "native_regulation",
+        "heating_minimum_setpoint",
         "use_building_parameters",
         "hysteresis",
         "sensor_validation",
@@ -389,6 +391,7 @@ def zone_section_fields(
     """Reuse the existing selectors, displaying just one room subject."""
     fields = {
         **zone_fields(groups),
+        vol.Optional("heating_minimum_setpoint"): numeric(5, 35, 0.5, "°C"),
         vol.Optional("floor_heating_follow_presets"): selector.BooleanSelector(),
         **zone_parameter_fields(
             {**dict.fromkeys(ZONE_FLAGS, False), "sensor_validation": "update_based"}
@@ -400,6 +403,8 @@ def zone_section_fields(
     }
     if record is None:
         return fields
+    if section == "zone_regulation" and not record.get("indoor_units"):
+        fields.pop("heating_minimum_setpoint")
     if section == "zone_floor_heating":
         can_follow = not record.get("indoor_units") and any(
             entity_id.startswith("climate.")
@@ -455,6 +460,7 @@ def merge_zone(previous: dict, submitted: dict) -> dict:
     record = {
         "id": previous["id"],
         "native_regulation": previous.get("native_regulation", False),
+        "workday_morning_comfort": previous.get("workday_morning_comfort", False),
         **dormant,
         **clean(submitted),
     }
@@ -828,14 +834,6 @@ class CentralOptionsFlow(OptionsFlowWithReload):
                     return await self.async_step_init()
         values = {**building_defaults(), **current, **(user_input or {})}
         fields = section_fields(CENTRAL_SECTIONS[section], values)
-        if section == "presence":
-            options = [{"value": "", "label": "—"}]
-            options.extend(
-                {"value": zone.id, "label": zone.name}
-                for zone in self._model(self.topology).zones
-                if not zone.calendar_entity
-            )
-            fields[vol.Optional("workday_presence_zone_id")] = choice(options)
         self._central_visible_keys = {marker.schema for marker in fields}
         schema = self.add_suggested_values_to_schema(
             source_schema(self.hass, fields),

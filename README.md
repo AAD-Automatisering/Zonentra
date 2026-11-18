@@ -118,6 +118,11 @@ berekening staat deze temperatuursensor op **Niet beschikbaar**; de diagnostisch
 sensor **Setpointstatus** legt uit waarom, bijvoorbeeld omdat de airco niet verwarmt
 of koelt. Bij meerdere airco’s heeft een beschikbare berekening voorrang op een
 airco zonder actief setpoint. Ook bij simulatie blijft de berekening zichtbaar.
+Onder **Regelparameters** kun je per ruimte een **Minimaal aircosetpoint bij
+opwarmen** instellen. Zonentra gebruikt dit minimum alleen bij warmtevraag in
+Comfort zolang de kamer onder haar doel zit. Het setpoint blijft begrensd door
+de airco en volgt het gebruikelijke wijzigingsinterval. Wis het veld om het
+minimum uit te schakelen.
 **Gebruik centrale instellingen voor afspraakvoorbereiding** staat standaard aan,
 ook als er al lokale voorbereidingswaarden zijn opgeslagen. Alleen een expliciete
 keuze voor uit schakelt over naar die lokale waarden.
@@ -370,21 +375,26 @@ de apparaatstap kleiner uitpakken. De observatie blijft bij configuratieherladen
 behouden voor dezelfde bron en instellingen; een volledige HA-herstart begint
 opnieuw. Deze functie verandert geen ventilatorstanden of vloerverwarmingsdoelen.
 
-### Eén ruimte automatisch bij aankomst op werkdagen
+### Comfort bij alarm uit in de ochtend, per ruimte
 
-Onder **Centrale configuratie → Configureren → Aanwezigheid** kun je één
-**Ruimte bij alarm uit op werkdagen** kiezen. De standaard is geen uitzondering
-(—). Kies ook het openingsschema, de bestaande alarm-/gebouwaanwezigheidsbron en
-**Werkdag-sensor voor vandaag** (offset 0). Bij aanwezige gebouwstatus krijgt alleen
-de geselecteerde ruimte automatisch comfort buiten openingstijden. De andere
-ruimtes behouden hun gewone planning. Ruimtes met een agenda volgen hun afspraken
-en zijn niet selecteerbaar voor deze uitzondering.
+Onder **Ruimte → Configureren → Sensoren en aanwezigheid** kun je
+**Comfort bij alarm uit in de ochtend** inschakelen. De optie staat standaard uit
+en kan voor meerdere ruimtes afzonderlijk worden ingesteld. Een bestaande centrale
+ruimtekeuze wordt bij het laden automatisch naar de betreffende ruimte overgezet;
+een al expliciet ingestelde ruimtekeuze blijft behouden.
+
+Kies centraal het openingsschema, de alarm-/gebouwaanwezigheidsbron en de
+**Werkdag-sensor voor vandaag** (offset 0). Bij aanwezige gebouwstatus krijgt een
+ruimte met deze optie automatisch comfort vóór **12:00 lokale tijd**, ook buiten
+openingstijden. Om 12:00 vervalt de ochtenduitzondering automatisch. Alarm uit in
+de middag of avond activeert deze uitzondering niet. De gewone regeling blijft
+van toepassing, waaronder openingstijden, daadwerkelijk ruimtegebruik en afspraken.
+Ruimtes met een agenda volgen hun afspraken en gebruiken deze uitzondering niet.
 
 Dit werkt uitsluitend maandag tot en met vrijdag én bij een betrouwbare aan-state
 van de werkdagsensor. Op zaterdag, zondag, feestdagen of bij ontbrekende/onbruikbare
 werkdaginformatie activeert alarm uit de uitzondering niet. Agenda-afspraken en
-bewust inschakelen via een roomcontroller blijven afzonderlijk werken. Het alarm
-uitzetten voorspelt geen aankomst: opwarmen begint pas wanneer het gebouw aanwezig is.
+bewust inschakelen via een roomcontroller blijven afzonderlijk werken.
 
 De uitzondering vraagt comfort via de gewone ruimteregeling, zodat ook de
 setpointcorrectie blijft werken. Ruimteregeling moet ingeschakeld zijn; expliciet

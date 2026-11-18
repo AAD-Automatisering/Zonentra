@@ -512,6 +512,11 @@ override, met geldige ruimtetemperatuur en een `temperature`-attribuut:
   van minstens een halve stap en hooguit eens per `setpoint_interval_seconds`
   (standaard 300 s); de runtime plant een herbeoordeling na de wachttijd.
 
+Een ingesteld `heating_minimum_setpoint` kan het berekende setpoint verhogen
+bij warmtevraag in Comfort en zolang de kamer onder de verwarmingsgrens zit.
+Het minimum wordt naar boven afgerond op de apparaatstap. De apparaatgrenzen
+en het wijzigingsinterval gelden ook voor dit minimum.
+
 De versterking is bewust 1 en zonder integratie: de unit regelt zelf, Zonentra
 verschuift alleen zijn doel zodat de ruimtesensor in plaats van de unitsensor telt.
 
@@ -773,7 +778,9 @@ blokken die `on` blijven starten geen nieuwe marge.
 Na aankomst of afloop van de marge geldt de normale aanwezigheid/bewegingsregeling;
 bij een gekoppelde gebouwaanwezigheid geeft gebouwpresentie alleen met planstatus
 `open` gebouwbreed comfort. Buiten die uren en op niet-werkdagen wordt de terugval
-`present`/`default` vervangen door afwezig met reden `outside_office_hours`.
+`present`/`default` en `motion_sensor_unknown` vervangen door afwezig met reden
+`outside_office_hours`. Een onbruikbare bewegingssensor is buiten openingstijden
+geen bewijs van ruimtegebruik; tijdens openingstijden blijft de comfortterugval gelden.
 Lokale beweging en agenda-afspraken behouden hun eigen bewijs van gebruik.
 Een waargenomen `manual_on` bij gebouwstatus present autoriseert alleen de
 betreffende ruimte (`room_controller_use`). Dit is een blijvende comfortvraag,
@@ -1022,30 +1029,32 @@ status, extra correctie en geaggregeerde opwarmsnelheid; geen ruwe observatiemet
 De vloerdoelen en de aparte sensor voor onvoldoende opwarming veranderen niet.
 
 
-## Geselecteerde ruimte bij aankomst op werkdagen
+## Comfort bij alarm uit in de ochtend, per ruimte
 
-`BuildingSettings.workday_presence_zone_id` is een optionele centrale ruimte-ID,
-standaard null, te kiezen bij Aanwezigheid uit de niet-agendaruimtes. Zij komt niet
-in `entity_ids` en wordt in diagnostiek geredigeerd. Een verwijzing naar een niet
-meer bestaande ruimte activeert niets.
+`Zone.workday_morning_comfort` is een booleaanse ruimteoptie, standaard false,
+te kiezen bij Sensoren en aanwezigheid. Meerdere ruimtes kunnen deze optie gebruiken.
+De voormalige centrale `workday_presence_zone_id` wordt bij het laden verwijderd
+en naar de betreffende ruimte overgezet; een expliciete ruimtewaarde heeft voorrang.
+Ook uitgeschakelde ruimte-entries worden gemigreerd. De omzetting is idempotent.
 
-Met openingsschema en gebouwaanwezigheid krijgt uitsluitend die ruimte comfort
+Met openingsschema en gebouwaanwezigheid krijgt een ruimte met deze optie comfort
 met reden `workday_presence`, indien de aanwezigheid betrouwbaar present is,
-de lokale dag maandag-vrijdag is én de geconfigureerde werkdagsensor betrouwbaar
-on meldt. Zonder werkdagsensor is de uitzondering uitgeschakeld. De lokale
-weekdagcontrole sluit zaterdag/zondag ook bij een foutief on-signaal uit; de
-werkdagsensor dekt onder andere feestdagen. Een deadline op lokale middernacht
-beoordeelt de uitzondering opnieuw zonder afhankelijk te zijn van nieuwe events.
+de lokale dag maandag-vrijdag is, de lokale tijd vóór 12:00 ligt én de
+geconfigureerde werkdagsensor betrouwbaar on meldt. Zonder werkdagsensor is de
+uitzondering uitgeschakeld. De lokale weekdagcontrole sluit zaterdag/zondag ook
+bij een foutief on-signaal uit; de werkdagsensor dekt onder andere feestdagen.
+Een deadline om 12:00 lokale tijd beëindigt de ochtenduitzondering ook zonder
+nieuwe sensor-events. Een agendaruimte gebruikt de uitzondering niet.
 
 Dit is een bezettingsvraag, geen handmatige apparaat-overname; de normale
 setpointcorrectie blijft werken. Bestaande voorbereiding, agenda-afspraken,
 ruimteregeling, presets en veiligheidsvoorwaarden behouden hun werking.
-`manual_off` in de geselecteerde ruimte onderdrukt alleen deze uitzondering via
-`workday_presence_suppressed` tot bewezen gebouwafwezigheid. Eigen stopopdrachten
+`manual_off` in een ingeschakelde ruimte onderdrukt alleen haar eigen uitzondering
+via `workday_presence_suppressed` tot bewezen gebouwafwezigheid. Eigen stopopdrachten
 gelden niet als manual_off. Onderdrukking overleeft configuratieherladen, maar
-geen HA-herstart. Verwijderen/wijzigen van de gekozen ruimte wist oude
-onderdrukkingen. Handmatige roomcontroller-sessies blijven onafhankelijk en zijn
-ook in het weekend toegestaan.
+geen HA-herstart. Uitschakelen van de optie of verwijderen van de ruimte wist de
+bijbehorende onderdrukking. Handmatige roomcontroller-sessies blijven onafhankelijk
+en zijn ook in het weekend en na 12:00 toegestaan.
 
 
 `manual_events` bewaart per airco de laatste herkende manual_on/manual_off/

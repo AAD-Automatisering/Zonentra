@@ -66,6 +66,7 @@ class Zone:
     use_building_preconditioning: bool = True
     use_building_floor_heating: bool = True
     native_regulation: bool = False  # Opt-in trial: let a running airco regulate.
+    workday_morning_comfort: bool = False
     # 0.10: own eco/away bands when the zone does not use the central limits;
     # None takes the central value.
     eco_heating_limit: float | None = None
@@ -79,6 +80,7 @@ class Zone:
     vane_heat_value: str | None = None
     # 0.11: facade of the room's screens (north ... northwest).
     facade: str | None = None
+    heating_minimum_setpoint: float | None = None
 
 
 @dataclass(frozen=True)
@@ -128,7 +130,6 @@ class BuildingSettings:
     presence_entity: str | None = None
     office_schedule_entity: str | None = None
     workday_entity: str | None = None
-    workday_presence_zone_id: str | None = None
     eco_heating_limit: float = 19.0
     eco_cooling_limit: float = 26.0
     away_heating_limit: float = 16.0
@@ -324,11 +325,6 @@ def build_model(building_id: str, name: str, topology: dict[str, Any]) -> Buildi
     _entity(settings.presence_entity, PRESENCE_DOMAINS)
     _entity(settings.office_schedule_entity, ("schedule",))
     _entity(settings.workday_entity, ("binary_sensor",))
-    if settings.workday_presence_zone_id is not None and (
-        not isinstance(settings.workday_presence_zone_id, str)
-        or not settings.workday_presence_zone_id.strip()
-    ):
-        raise ValueError("invalid_parameters")
     _validate_bands(settings, settings.hysteresis)
     _range(settings.motion_delay_seconds, 0, 600)
     _range(settings.motion_off_delay_minutes, 1, 240)
@@ -387,6 +383,7 @@ def build_model(building_id: str, name: str, topology: dict[str, Any]) -> Buildi
                 "use_building_floor_heating",
                 "floor_heating_follow_presets",
                 "native_regulation",
+                "workday_morning_comfort",
             )
         ):
             raise ValueError("invalid_parameters")
@@ -414,6 +411,8 @@ def build_model(building_id: str, name: str, topology: dict[str, Any]) -> Buildi
         _validate_floor_heating(zone)
         _range(zone.weight, 0.1, 10)
         _range(zone.hysteresis, 0.1, 2)
+        if zone.heating_minimum_setpoint is not None:
+            _range(zone.heating_minimum_setpoint, 5, 35)
         _range(zone.max_age_seconds, 0, 86400)
         _validate_sensor_validation(zone)
         _validate_limits(zone)

@@ -21,7 +21,7 @@ from homeassistant.helpers.event import (
 from homeassistant.helpers.storage import Store
 
 from .const import DOMAIN
-from .migration import migrate_options
+from .migration import migrate_options, migrate_workday_presence
 from .models import build_model
 from .runtime import BuildingRuntime
 from .runtime_bookings import CALENDAR_REFRESH_MINUTES
@@ -122,7 +122,20 @@ async def async_setup_entry(hass: HomeAssistant, entry: ZonentraConfigEntry) -> 
             "This older Zonentra configuration is no longer supported. "
             "Set up a central configuration and separate rooms."
         )
-    options = migrate_options(dict(entry.options))
+    options = dict(entry.options)
+    if kind == CENTRAL:
+        rooms = [
+            room
+            for room in hass.config_entries.async_entries(DOMAIN)
+            if entry_type(room) == ZONE
+        ]
+        options, migrated_rooms = migrate_workday_presence(
+            options, [dict(room.options) for room in rooms]
+        )
+        for room, migrated in zip(rooms, migrated_rooms, strict=True):
+            if migrated != dict(room.options):
+                hass.config_entries.async_update_entry(room, options=migrated)
+    options = migrate_options(options)
     if options != dict(entry.options):
         hass.config_entries.async_update_entry(entry, options=options)
     if kind == ZONE:

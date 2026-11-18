@@ -18,6 +18,7 @@ from custom_components.zonentra.const import DOMAIN
 from tests.test_entry_layout import (
     CELSIUS,
     add_zone,
+    edit_zone_subject,
     set_states,
     setup_central,
     zone_options,
@@ -282,6 +283,34 @@ async def test_thermostat_off_switches_a_regulated_room_off(hass, freezer):
     assert calls(mocks) == []  # Minimum run time first (comfort).
     await later(hass, freezer, minutes=11)
     assert ("turn_off", None) in calls(mocks)
+
+
+async def test_room_minimum_setpoint_applies_only_below_comfort_target(hass, freezer):
+    mocks = await mock_climate(hass)
+    central, zone = await office(hass, freezer, mocks)
+    flow = await hass.config_entries.options.async_init(zone.entry_id)
+    flow = await edit_zone_subject(
+        hass, flow, "zone_regulation", {"heating_minimum_setpoint": 25.5}
+    )
+    await hass.config_entries.options.async_configure(
+        flow["flow_id"], {"next_step_id": "finish"}
+    )
+    await hass.async_block_till_done()
+    runtime = central.runtime_data
+    runtime.set_thermostat("west", regulation=True)
+    await later(hass, freezer, minutes=4)
+    await unit(hass, "heat", temperature=22.5)
+    assert ("set_temperature", 25.5) in calls(mocks)
+    assert runtime.setpoint_plans[EQUIPMENT].setpoint == 25.5
+    await unit(hass, "heat", temperature=25.5)
+    clear(mocks)
+
+    await later(hass, freezer, minutes=6)
+    hass.states.async_set("sensor.west_temperature", "22", CELSIUS)
+    await hass.async_block_till_done()
+    assert runtime.zone_demands["west"].demand == "heating_demand"  # Hysteresis.
+    assert runtime.setpoint_plans[EQUIPMENT].setpoint == 22.5
+    assert ("set_temperature", 22.5) in calls(mocks)
 
 
 async def test_away_shutdown_waits_for_confirmation_before_setpoint(hass, freezer):

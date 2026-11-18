@@ -25,6 +25,7 @@ Pure module: it only returns decisions; the runtime sends commands.
 
 from dataclasses import asdict, dataclass, replace
 from datetime import datetime, timedelta
+from math import ceil
 from typing import Any
 
 from .demand import ZoneDemand
@@ -458,6 +459,7 @@ def plan_setpoint(
     max_temp: float | None = None,
     gain: float = 1.0,
     heating_extra: float = 0.0,
+    heating_minimum: float | None = None,
 ) -> SetpointPlan:
     """Self-regulating setpoint for a running unit, steered on the room sensor.
 
@@ -466,8 +468,9 @@ def plan_setpoint(
     own sensor sits in the unit, so the room error is added on top (default gain 1;
     the optional native trial uses gain 0.25),
     plus optional sustained-heating assistance, all bounded by ``max_offset``:
-    a cold room asks the unit for more, a room that
-    is already warm enough for less. Changes are rounded to the unit's step
+    a cold room asks the unit for more, a room that is already warm enough for
+    less. An explicit heating minimum can raise the result below the room goal.
+    Changes are rounded to the unit's step
     and sent at most once per ``interval_seconds``.
 
     Values and step intervals are in Celsius. ``step_origin`` aligns the grid
@@ -498,6 +501,14 @@ def plan_setpoint(
     # Keep conversion precision until service dispatch (for example whole °F
     # steps represented in °C). step_origin preserves the native unit's grid.
     rounded = step_origin + round((raw - step_origin) / step) * step
+    if (
+        mode == "heat"
+        and heating_minimum is not None
+        and room_temperature < heating_limit
+        and rounded < heating_minimum
+    ):
+        minimum_step = ceil(round((heating_minimum - step_origin) / step, 8))
+        rounded = step_origin + minimum_step * step
     setpoint = round(min(high, max(low, rounded)), 8)
     plan = SetpointPlan("in_sync", setpoint, round(base, 2), round(setpoint - base, 2))
     if abs(setpoint - current_setpoint) < step / 2:
