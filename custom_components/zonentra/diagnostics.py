@@ -124,6 +124,16 @@ def _source_validation(runtime) -> list[dict]:
 def _room_context(runtime, zone_ids):
     """Explain screen and booking decisions without raw sensor/calendar content."""
     return {
+        "airco_sensor_offsets": [
+            {
+                "equipment_id": item.id,
+                "zone_id": item.zone_id,
+                **offset.summary(),
+            }
+            for item in runtime.building.equipment
+            if item.zone_id in zone_ids
+            and (offset := runtime.sensor_offsets.get(item.id)) is not None
+        ],
         "heating_progress": [
             {
                 "zone_id": zone_id,

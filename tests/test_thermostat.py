@@ -311,6 +311,13 @@ def test_cool_setpoint_subtracts_the_room_error():
     assert setpoint("cool", room_temperature=30.0).setpoint == 21.5  # max 2
 
 
+def test_learned_sensor_offset_and_heating_assistance_share_setpoint_limit():
+    heat = setpoint(room_temperature=21.0, heating_extra=1.0, sensor_offset=1.0)
+    cool = setpoint("cool", room_temperature=25.0, sensor_offset=-1.0)
+    assert heat.setpoint == 23.5
+    assert cool.setpoint == 21.5
+
+
 def test_unit_step_and_limits():
     assert setpoint(room_temperature=20.0, step=1).setpoint == 23.0
     assert setpoint(room_temperature=15.0, max_temp=23).setpoint == 23

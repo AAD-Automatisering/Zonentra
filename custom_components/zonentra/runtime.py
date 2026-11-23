@@ -78,6 +78,7 @@ from .runtime_helpers import _origin, _setpoint
 from .runtime_office import OfficeRuntimeMixin
 from .runtime_shading import ShadingRuntimeMixin
 from .runtime_timing import TimingRuntimeMixin
+from .sensor_offset import SensorOffset, observe_sensor_offset
 from .shading import ScreenDecision, ScreenMove, SunMemory
 from .temperature import climate_native_unit, convert_temperature
 from .thermostat import (
@@ -177,6 +178,7 @@ class BuildingRuntime(
         self.setpoint_plans: dict[str, SetpointPlan] = {}
         self.heating_corrections: dict = {}
         self._heating_correction_checks: list = []
+        self.sensor_offsets: dict[str, SensorOffset] = {}
         self.setpoint_sent: dict = {}
         self.setpoint_tracker = CommandTracker()
         self._setpoint_checks: list = []
@@ -484,6 +486,7 @@ class BuildingRuntime(
         self._preview_auto_fans()
         self._plan(transitions, sources, now)
         self._update_heating_corrections(now)
+        self._update_sensor_offsets(sources, now)
         if self.active_capable:
             self._floor_control(now)
             self._control(sources, now)
@@ -536,6 +539,11 @@ class BuildingRuntime(
         deadlines.extend(self._office_checks)
         deadlines.extend(self._motion_checks)
         deadlines.extend(self._heating_correction_checks)
+        deadlines.extend(
+            offset.next_check
+            for offset in self.sensor_offsets.values()
+            if offset.next_check is not None
+        )
         deadlines.extend(
             progress.next_check
             for progress in self.heating_progress.values()
@@ -713,6 +721,7 @@ class BuildingRuntime(
         "hvac_demands",
         "heating_watches",
         "heating_corrections",
+        "sensor_offsets",
         "floor_overrides",
         "floor_window_closed_since",
         "coordination_memories",
@@ -1535,6 +1544,44 @@ class BuildingRuntime(
         self.heating_corrections = corrections
         self._heating_correction_checks = checks
 
+    def _update_sensor_offsets(self, sources, now):
+        """Observe paired room and indoor-unit reports under room regulation."""
+        offsets = {}
+        zones = {zone.id: zone for zone in self.building.zones}
+        for item in self.building.equipment:
+            if item.kind != "hvac":
+                continue
+            zone = zones[item.zone_id]
+            unit = self.indoor_units[item.id]
+            room = self.zone_snapshots[zone.id].temperature
+            source = sources.get(item.entity_id)
+            override = self.overrides.get(item.id)
+            eligible = (
+                self.regulated(zone.id)
+                and unit.available
+                and unit.target_temperature is not None
+                and self.thermostat(zone.id).hvac_mode in ("heat_cool", unit.selected_mode)
+                and self.windows.get(zone.id) in ("closed", "not_configured", "bypass")
+                and not (override and override.active(now))
+                and unit.selected_mode in self._safe_modes(item)
+            )
+            unit_temperature = convert_temperature(
+                unit.current_temperature, unit.temperature_unit
+            )
+            offsets[item.id] = observe_sensor_offset(
+                self.sensor_offsets.get(item.id),
+                now,
+                context=(item.entity_id, zone.temperature_entity),
+                mode=unit.selected_mode if eligible else None,
+                action=unit.reported_action,
+                difference=unit_temperature - room.value
+                if unit_temperature is not None and room.quality == "valid"
+                else None,
+                room_at=room.reported_at,
+                unit_at=source.reported_at if source else None,
+            )
+        self.sensor_offsets = offsets
+
     def _setpoint_plan(self, item, zone, settings, now) -> SetpointPlan:
         unit = self.indoor_units.get(item.id)
         override = self.overrides.get(item.id)
@@ -1571,6 +1618,9 @@ class BuildingRuntime(
             gain=NATIVE_GAIN if self.native_regulation(zone) else 1.0,
             heating_extra=self.heating_corrections[item.id].extra
             if item.id in self.heating_corrections
+            else 0.0,
+            sensor_offset=offset.correction
+            if (offset := self.sensor_offsets.get(item.id)) is not None
             else 0.0,
             heating_minimum=zone.heating_minimum_setpoint
             if self.zone_bands[zone.id][0] == "comfort"

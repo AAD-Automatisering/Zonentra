@@ -996,6 +996,34 @@ Het live leren en de betrouwbaarheid van eerder opgeslagen profielen zijn aparte
 zaken en worden daarom afzonderlijk weergegeven.
 
 
+## Automatisch leren van aircosensorafwijking
+
+Bij actieve ruimteregeling vergelijkt Zonentra de temperatuurrapporten van de
+ruimtesensor en de binnenunit. Per binnenunit worden verwarmen en koelen apart
+ingeleerd via `hvac_action`. Na vijf minuten stabiele activiteit moeten beide
+bronnen een nieuw rapport hebben, hoogstens vijf minuten uit elkaar. Beide
+rapporttijden moeten minstens vijf minuten sinds het vorige meetpaar zijn
+opgeschoven. Een timer of herhaalde beoordeling telt daardoor geen extra paar.
+
+Na zes meetparen gebruikt Zonentra het gemiddelde van de laatste maximaal acht
+verschillen (`T_binnenunit − T_ruimte`), met een maximale standaardafwijking van
+0,35 K. Een verschil groter dan 4 K schakelt de correctie uit en maakt bij een
+nieuw meetpaar het profiel leeg. De correctie gaat in stappen van 0,5 K, is
+begrensd tot ±1 K en deelt het bestaande setpointplafond met de proportionele
+regeling en de opwarmcorrectie. De apparaatgrenzen, afronding en het
+wijzigingsinterval blijven gelden.
+
+De correctie kan tijdens `idle` doorlopen in dezelfde ingestelde stand, zodat
+de doeltemperatuur stabiel blijft wanneer de eigen thermostaat van de unit
+pauzeert. Als een van beide rapporten twintig minuten oud is, bij onbruikbare
+feedback of als de ruimteregeling blokkeert, vervalt de correctie automatisch.
+De tijdgrens voor deze correctie staat los van de geconfigureerde validatie van
+de ruimtesensor voor de overige regeling. Een vervangen bron begint opnieuw.
+Profielen vervallen na zeven dagen zonder meetpaar en blijven in geheugen bij
+een configuratieherlaad. Na een volledige herstart leert Zonentra opnieuw.
+De centrale en ruimtediagnostiek tonen status, aangevraagde correctie en per
+modus het gemiddelde, de spreiding en het aantal meetparen.
+
 ## Begrensde aircocorrectie bij aanhoudend temperatuurtekort
 
 `heating_correction.py` bewaart per binnenunit een observatie en maximaal 1 K extra
