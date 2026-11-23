@@ -778,10 +778,13 @@ blokken die `on` blijven starten geen nieuwe marge.
 Na aankomst of afloop van de marge geldt de normale aanwezigheid/bewegingsregeling;
 bij een gekoppelde gebouwaanwezigheid geeft gebouwpresentie alleen met planstatus
 `open` gebouwbreed comfort. Buiten die uren en op niet-werkdagen wordt de terugval
-`present`/`default` en `motion_sensor_unknown` vervangen door afwezig met reden
-`outside_office_hours`. Een onbruikbare bewegingssensor is buiten openingstijden
-geen bewijs van ruimtegebruik; tijdens openingstijden blijft de comfortterugval gelden.
-Lokale beweging en agenda-afspraken behouden hun eigen bewijs van gebruik.
+`present`/`default`, `motion`, `no_motion` en `motion_sensor_unknown` vervangen
+door afwezig met reden `outside_office_hours`, tenzij eerder gebruik tijdens
+openingstijden nog doorloopt of een afzonderlijke uitzondering geldt. Beweging
+en haar nalooptijd autoriseren buiten openingstijden geen nieuw ruimtegebruik.
+Alarm aan wist het eerdere ruimtegebruik; opnieuw alarm uit kan dat dus niet
+via beweging hervatten. Tijdens openingstijden blijft de gewone bewegingsregeling
+gelden. Agenda-afspraken behouden hun eigen planning.
 Een waargenomen `manual_on` bij gebouwstatus present autoriseert alleen de
 betreffende ruimte (`room_controller_use`). Dit is een blijvende comfortvraag,
 zonder een `ManualOverride`: setpoint-, fan-, opwarmcorrectie en thermisch inleren
@@ -1101,8 +1104,10 @@ comfort zijn en de thermostaat mag niet uit staan. Voorbereiding/arrival grace
 zonder daadwerkelijke aankomst levert geen bewijs van ruimtegebruik op.
 
 Buiten openingstijden blijft zo'n ruimte bij betrouwbare present-status op comfort
-met reden `office_continued_use`. Dit vervangt uitsluitend de gewone sensorloze
-terugval `present`/`default`, niet de bestaande bewegings- of agendalogica. Het
+met reden `office_continued_use`. Dit vervangt de gewone terugval
+`present`/`default` en bevestigde beweging `motion`. Zonder doorlopend ruimtegebruik
+blijven beweging en naloop buiten openingstijden op afwezig. Agendaruimtes volgen
+hun eigen planning. Het
 creëert geen handmatige apparaat-overname en verandert geen minimumtijden,
 setpointcorrectie, ventilatorregeling of native-regulation-voorwaarden.
 

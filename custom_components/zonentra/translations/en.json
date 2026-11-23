@@ -128,7 +128,7 @@
           "workday_entity": "Workday sensor for today (optional)"
         },
         "data_description": {
-          "office_schedule_entity": "Select a schedule helper. Ordinary rooms prepare automatically before opening, including while absent. A maximum 15-minute arrival grace follows opening; presence and motion then determine comfort. Calendar rooms continue to follow their bookings. Rooms observed in comfort while the building is present during opening hours stay in comfort after closing until the building becomes absent. A new arrival outside opening hours does not activate this continuation.",
+          "office_schedule_entity": "Select a schedule helper. Ordinary rooms prepare automatically before opening, including while absent. A maximum 15-minute arrival grace follows opening; presence and motion then determine comfort. Calendar rooms continue to follow their bookings. Rooms observed in comfort while the building is present during opening hours stay in comfort after closing until the building becomes absent. A new arrival outside opening hours does not activate this continuation. Outside opening hours, motion cannot authorize a new room visit, including after arming and disarming or during the motion off-delay.",
           "workday_entity": "Separate from opening hours: on = workday, off = non-workday. Choose a sensor for today (offset 0). On non-workdays or with an unusable sensor, office preparation and arrival grace are skipped. Presence and calendar bookings still work. Without a sensor, only the schedule applies."
         },
         "submit": "Apply and return"

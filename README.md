@@ -237,7 +237,11 @@ beëindigt de voortzetting voor die ruimte.
 
 Een nieuwe aankomst buiten openingstijden of op niet-werkdagen activeert die
 voortzetting niet. Zonder eerder waargenomen werkdaggebruik blijven ruimtes op afwezig, behalve
-tijdens geplande voorbereiding of een afspraak. Lokale bewegingsdetectie blijft werken.
+tijdens geplande voorbereiding, een afspraak of de ingestelde ochtenduitzondering.
+Alarm aan beëindigt het eerdere ruimtegebruik. Na opnieuw alarm uit buiten
+openingstijden geeft beweging geen comfort: ook een nog actieve bewegingssensor,
+de nalooptijd of nieuwe beweging kan de ruimte niet automatisch opnieuw laten
+verwarmen op comfort. Binnen openingstijden werkt bewegingsdetectie normaal.
 
 Schakelt iemand bij aanwezige gebouwstatus een airco zelf in via de roomcontroller,
 dan blijft die ruimte in gebruik tot handmatig uitschakelen of het alarm

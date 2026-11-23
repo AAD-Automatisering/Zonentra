@@ -1560,7 +1560,8 @@ class BuildingRuntime(
                 self.regulated(zone.id)
                 and unit.available
                 and unit.target_temperature is not None
-                and self.thermostat(zone.id).hvac_mode in ("heat_cool", unit.selected_mode)
+                and self.thermostat(zone.id).hvac_mode
+                in ("heat_cool", unit.selected_mode)
                 and self.windows.get(zone.id) in ("closed", "not_configured", "bypass")
                 and not (override and override.active(now))
                 and unit.selected_mode in self._safe_modes(item)

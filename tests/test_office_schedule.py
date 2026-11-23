@@ -1067,8 +1067,66 @@ async def test_unknown_motion_does_not_restore_comfort_after_alarm_cycle(
     hass.states.async_set(alarm, "disarmed")
     await hass.async_block_till_done()
     assert runtime.zone_bands["west"] == ("away", "outside_office_hours")
-    # A recovered sensor can still provide real evidence of room use.
+    # New motion cannot authorize an after-hours visit either.
     hass.states.async_set(sensor, "on")
     await hass.async_block_till_done()
     await later(hass, freezer, seconds=runtime.building.settings.motion_delay_seconds)
+    assert runtime.zone_bands["west"] == ("away", "outside_office_hours")
+
+
+@pytest.mark.parametrize("sensor_stays_on", [True, False])
+@pytest.mark.parametrize("reload_after_disarm", [True, False])
+async def test_alarm_cycle_blocks_after_hours_motion_heating(
+    hass, freezer, sensor_stays_on, reload_after_disarm
+):
+    await hass.config.async_set_time_zone("Europe/Amsterdam")
+    freezer.move_to("2026-11-23T16:00:00+00:00")
+    alarm = "alarm_control_panel.office"
+    sensor = "binary_sensor.west_motion"
+    hass.states.async_set(sensor, "on")
+    central, _, opening = await office(
+        hass, start=1000, presence_entity=alarm, occupancy_entity=sensor
+    )
+    hass.states.async_set(alarm, "disarmed")
+    hass.states.async_set(SCHEDULE, "on", {"next_event": opening})
+    await hass.async_block_till_done()
+    await later(hass, freezer, seconds=30)
+    runtime = central.runtime_data
+    assert runtime.zone_bands["west"] == ("comfort", "motion")
+    hass.states.async_set(SCHEDULE, "off", {"next_event": opening})
+    await hass.async_block_till_done()
+    assert runtime.zone_bands["west"] == ("comfort", "office_continued_use")
+    if not sensor_stays_on:
+        hass.states.async_set(sensor, "off")
+        await hass.async_block_till_done()
+    hass.states.async_set(alarm, "armed_away")
+    await hass.async_block_till_done()
+    assert not runtime.office_use
+    assert runtime.zone_bands["west"] == ("away", "building_absent")
+    await later(hass, freezer, seconds=5)
+    hass.states.async_set(alarm, "disarmed")
+    await hass.async_block_till_done()
+    if reload_after_disarm:
+        assert await hass.config_entries.async_reload(central.entry_id)
+        await hass.async_block_till_done()
+        runtime = central.runtime_data
+    assert runtime.zone_bands["west"] == ("away", "outside_office_hours")
+    assert runtime.zone_demands["west"].demand == "neutral"
+    # Neither a fresh motion event nor its full off-delay may request heating.
+    hass.states.async_set(sensor, "off")
+    await hass.async_block_till_done()
+    hass.states.async_set(sensor, "on")
+    await hass.async_block_till_done()
+    await later(hass, freezer, seconds=30)
+    assert runtime.zone_bands["west"] == ("away", "outside_office_hours")
+    hass.states.async_set(sensor, "off")
+    await hass.async_block_till_done()
+    await later(hass, freezer, minutes=31)
+    assert runtime.zone_bands["west"] == ("away", "outside_office_hours")
+    assert runtime.zone_demands["west"].demand == "neutral"
+    # The regular schedule restores normal motion control on the next opening.
+    hass.states.async_set(SCHEDULE, "on", {"next_event": opening})
+    hass.states.async_set(sensor, "on")
+    await hass.async_block_till_done()
+    await later(hass, freezer, seconds=30)
     assert runtime.zone_bands["west"] == ("comfort", "motion")

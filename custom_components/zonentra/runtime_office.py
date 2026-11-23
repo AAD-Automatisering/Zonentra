@@ -227,16 +227,19 @@ class OfficeRuntimeMixin:
                 plan.status != "open"
                 and zone.id in self.office_use
                 and occupancy.presence == "present"
-                and occupancy.reason in ("present", "default")
+                and occupancy.reason in ("present", "default", "motion")
             ):
                 return replace(occupancy, mode="comfort", reason="office_continued_use")
-            # Only confirmed room motion is evidence of use. A broken sensor's
-            # comfort fallback must not reopen a room outside office hours.
-            # Bookings retain their own occupancy evidence.
+            # Motion (including its off-delay) cannot authorize a new visit
+            # outside office hours. Arming clears office_use, so disarming
+            # cannot revive the previous visit through a still-active sensor.
+            # Bookings, morning comfort and manual use were handled above.
             if plan.status != "open" and occupancy.reason in (
                 "present",
                 "default",
                 "motion_sensor_unknown",
+                "motion",
+                "no_motion",
             ):
                 return replace(occupancy, mode="away", reason="outside_office_hours")
         return occupancy
