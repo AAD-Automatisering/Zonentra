@@ -122,15 +122,7 @@ class OfficeRuntimeMixin:
             plan = workday_plan
         elif entity:
             source = sources.get(entity)
-            state = self.hass.states.get(entity)
-            raw = state.attributes.get("next_event") if state else None
-            next_event = (
-                raw
-                if isinstance(raw, datetime)
-                else dt_util.parse_datetime(raw)
-                if isinstance(raw, str)
-                else None
-            )
+            raw, next_event = self._office_next_event(entity)
             if (
                 source is None
                 or not source.trustworthy
@@ -233,16 +225,50 @@ class OfficeRuntimeMixin:
             # Motion (including its off-delay) cannot authorize a new visit
             # outside office hours. Arming clears office_use, so disarming
             # cannot revive the previous visit through a still-active sensor.
-            # Bookings, morning comfort and manual use were handled above.
-            if plan.status != "open" and occupancy.reason in (
+            # Active bookings, morning comfort and manual use were handled above.
+            # Idle calendar rooms also obey closing, while retaining Eco when open.
+            office_open = (
+                self._office_is_open(sources, now)
+                if zone.calendar_entity
+                else plan.status == "open"
+            )
+            if not office_open and occupancy.reason in (
                 "present",
                 "default",
                 "motion_sensor_unknown",
                 "motion",
                 "no_motion",
+                "no_booking",
+                "calendar_unknown",
             ):
                 return replace(occupancy, mode="away", reason="outside_office_hours")
         return occupancy
+
+    def _office_next_event(self, entity):
+        state = self.hass.states.get(entity)
+        raw = state.attributes.get("next_event") if state else None
+        return raw, (
+            raw
+            if isinstance(raw, datetime)
+            else dt_util.parse_datetime(raw)
+            if isinstance(raw, str)
+            else None
+        )
+
+    def _office_is_open(self, sources, now):
+        """Check opening hours without applying office preparation to calendars."""
+        entity = self.building.settings.office_schedule_entity
+        source = sources.get(entity)
+        _, next_event = self._office_next_event(entity)
+        return bool(
+            source is not None
+            and source.trustworthy
+            and source.state == "on"
+            and next_event is not None
+            and next_event.tzinfo is not None
+            and next_event > now
+            and self._office_workday(sources, now) is None
+        )
 
     def _office_workday(self, sources, now):
         """The optional binary sensor represents today, independently of hours."""

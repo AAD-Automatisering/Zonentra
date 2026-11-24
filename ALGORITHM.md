@@ -736,7 +736,11 @@ De forecast-startmarges worden voor een actieve afspraak niet toegepast. Explici
 thermostaatinstellingen en alle bestaande apparaat-/groepsblokkades blijven leidend.
 Buiten `preparing` en `meeting` gebruikt een agendaruimte eco, onafhankelijk van
 beweging, tenzij het gebouw afwezig is. Ook bij een onbekende, verouderde of onbruikbare agenda
-geldt eco (`calendar_unknown`) of de afwezig-band bij gebouwafwezigheid; een herstelde agenda hervat de actuele planning.
+geldt eco (`calendar_unknown`) of de afwezig-band bij gebouwafwezigheid.
+Met een gekoppeld openingsschema én gebouwaanwezigheid vervangt de kantoorregeling
+`no_booking` en `calendar_unknown` buiten openingstijden eveneens door afwezig
+(`outside_office_hours`). Tijdens openingstijden blijft deze Eco-terugval gelden.
+Een herstelde agenda hervat de actuele planning.
 Expliciete presets Eco en Afwezig blijven gelden. Timers evalueren start en einde zonder nieuw
 sensorevent. `BookingSensor` toont alleen planning en schatting, geen afspraakinhoud.
 
@@ -744,7 +748,8 @@ sensorevent. `BookingSensor` toont alleen planning en schatting, geen afspraakin
 
 `office_schedule_entity` is één optionele centrale `schedule`-helper, te selecteren
 onder Aanwezigheid. Alle ruimtes zonder agenda volgen deze helper; agendaruimtes
-blijven uitsluitend hun afspraken volgen. Er bestaat geen ruimte-override voor
+volgen hun afspraken voor comfort en gebruiken zonder actieve afspraak Eco
+binnen openingstijden en Afwezig daarbuiten. Er bestaat geen ruimte-override voor
 het openingstijdenschema.
 
 `workday_entity` is een afzonderlijke optionele centrale `binary_sensor` voor
@@ -778,7 +783,8 @@ blokken die `on` blijven starten geen nieuwe marge.
 Na aankomst of afloop van de marge geldt de normale aanwezigheid/bewegingsregeling;
 bij een gekoppelde gebouwaanwezigheid geeft gebouwpresentie alleen met planstatus
 `open` gebouwbreed comfort. Buiten die uren en op niet-werkdagen wordt de terugval
-`present`/`default`, `motion`, `no_motion` en `motion_sensor_unknown` vervangen
+`present`/`default`, `motion`, `no_motion`, `motion_sensor_unknown`, `no_booking`
+en `calendar_unknown` vervangen
 door afwezig met reden `outside_office_hours`, tenzij eerder gebruik tijdens
 openingstijden nog doorloopt of een afzonderlijke uitzondering geldt. Beweging
 en haar nalooptijd autoriseren buiten openingstijden geen nieuw ruimtegebruik.

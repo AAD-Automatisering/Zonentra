@@ -188,7 +188,7 @@ async def test_removing_or_rescheduling_opening_cancels_preparation(hass):
     assert SCHEDULE not in central.runtime_data.building.entity_ids
 
 
-async def test_calendar_rooms_ignore_office_hours(hass):
+async def test_unbooked_calendar_rooms_use_away_outside_office_hours(hass):
     hass.states.async_set(CALENDAR, "off")
     calendar_service(hass, {CALENDAR: {"events": []}})
     central, _, _ = await office(hass, start=20, calendar_entity=CALENDAR)
@@ -197,7 +197,38 @@ async def test_calendar_rooms_ignore_office_hours(hass):
     assert runtime.zone_bands["west"][0] == "away"
     hass.states.async_set(PRESENCE, "on")
     await hass.async_block_till_done()
-    assert runtime.zone_bands["west"][0] == "eco"
+    assert runtime.zone_bands["west"] == ("away", "outside_office_hours")
+
+
+@pytest.mark.parametrize("start", [-5, 20])
+async def test_active_booking_keeps_comfort_then_returns_to_away_after_hours(
+    hass, freezer, start
+):
+    now = dt_util.utcnow()
+    hass.states.async_set(CALENDAR, "off")
+    calendar_service(
+        hass,
+        {
+            CALENDAR: {
+                "events": [
+                    {
+                        "start": (now + timedelta(minutes=start)).isoformat(),
+                        "end": (now + timedelta(minutes=start + 30)).isoformat(),
+                    }
+                ]
+            }
+        },
+    )
+    central, _, _ = await office(hass, start=1000, calendar_entity=CALENDAR)
+    hass.states.async_set(PRESENCE, "on")
+    await hass.async_block_till_done()
+    runtime = central.runtime_data
+    assert runtime.zone_bands["west"] == (
+        "comfort",
+        "booking_meeting" if start < 0 else "booking_preparing",
+    )
+    await later(hass, freezer, minutes=start + 31)
+    assert runtime.zone_bands["west"] == ("away", "outside_office_hours")
 
 
 async def test_open_office_at_startup_does_not_invent_arrival(hass):
@@ -822,7 +853,7 @@ async def test_calendar_room_does_not_use_morning_exception(hass):
     )
     hass.states.async_set(PRESENCE, "on")
     await hass.async_block_till_done()
-    assert central.runtime_data.zone_bands["west"] == ("eco", "no_booking")
+    assert central.runtime_data.zone_bands["west"] == ("away", "outside_office_hours")
 
 
 async def test_room_controller_use_keeps_setpoint_fan_and_learning_active(
@@ -1130,3 +1161,52 @@ async def test_alarm_cycle_blocks_after_hours_motion_heating(
     await hass.async_block_till_done()
     await later(hass, freezer, seconds=30)
     assert runtime.zone_bands["west"] == ("comfort", "motion")
+
+
+@pytest.mark.parametrize(
+    "eco_source", ["preset", "motion", "calendar", "calendar_unknown"]
+)
+async def test_eco_rooms_use_away_after_alarm_cycle_outside_schedule(
+    hass, freezer, eco_source
+):
+    await hass.config.async_set_time_zone("Europe/Amsterdam")
+    freezer.move_to("2026-11-23T16:00:00+00:00")
+    alarm = "alarm_control_panel.office"
+    fields = {}
+    if eco_source.startswith("calendar"):
+        hass.states.async_set(CALENDAR, "off")
+        calendar_service(hass, {CALENDAR: {"events": []}})
+        fields["calendar_entity"] = CALENDAR
+    if eco_source == "motion":
+        hass.states.async_set("binary_sensor.west_motion", "off")
+        fields["occupancy_entity"] = "binary_sensor.west_motion"
+    central, _, opening = await office(
+        hass, start=1000, presence_entity=alarm, **fields
+    )
+    runtime = central.runtime_data
+    if eco_source == "preset":
+        runtime.set_thermostat("west", preset="eco")
+    if eco_source == "calendar_unknown":
+        hass.states.async_set(CALENDAR, "unavailable")
+    hass.states.async_set(SCHEDULE, "on", {"next_event": opening})
+    hass.states.async_set(alarm, "disarmed")
+    await hass.async_block_till_done()
+    assert runtime.zone_bands["west"][0] == "eco"
+    hass.states.async_set(SCHEDULE, "off", {"next_event": opening})
+    await hass.async_block_till_done()
+    assert runtime.zone_bands["west"] == ("away", "outside_office_hours")
+    hass.states.async_set(alarm, "armed_away")
+    await hass.async_block_till_done()
+    assert runtime.zone_bands["west"] == ("away", "building_absent")
+    hass.states.async_set(alarm, "disarmed")
+    await hass.async_block_till_done()
+    assert runtime.zone_bands["west"] == ("away", "outside_office_hours")
+    assert await hass.config_entries.async_reload(central.entry_id)
+    await hass.async_block_till_done()
+    runtime = central.runtime_data
+    assert runtime.zone_bands["west"] == ("away", "outside_office_hours")
+    assert runtime.zone_demands["west"].demand == "neutral"
+    # Opening again restores the room's normal Eco policy.
+    hass.states.async_set(SCHEDULE, "on", {"next_event": opening})
+    await hass.async_block_till_done()
+    assert runtime.zone_bands["west"][0] == "eco"
