@@ -123,6 +123,7 @@ def _source_validation(runtime) -> list[dict]:
 
 def _room_context(runtime, zone_ids):
     """Explain screen and booking decisions without raw sensor/calendar content."""
+    facades = {zone.id: zone.facade for zone in runtime.building.zones}
     return {
         "airco_sensor_offsets": [
             {
@@ -165,6 +166,7 @@ def _room_context(runtime, zone_ids):
             "entity_id": runtime.building.settings.weather_entity,
             "speed_kmh": runtime.wind_speed,
             "gust_kmh": runtime.wind_gust,
+            "bearing": runtime.wind_bearing,
             "speed_limit_kmh": runtime.building.settings.screen_wind_speed_limit,
             "gust_limit_kmh": runtime.building.settings.screen_wind_gust_limit,
             "open_required": runtime.wind.open_required,
@@ -192,6 +194,9 @@ def _room_context(runtime, zone_ids):
             {
                 "equipment_id": item.id,
                 "zone_id": item.zone_id,
+                "wind_status": runtime.wind.for_facade(
+                    runtime.wind_bearing, facades[item.zone_id]
+                ).status,
                 "decision": asdict(runtime.screen_decisions[item.id])
                 if item.id in runtime.screen_decisions
                 else None,

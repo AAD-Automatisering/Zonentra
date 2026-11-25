@@ -200,6 +200,7 @@ class BuildingRuntime(
         self.wind = WindProtection("not_configured", self.wind_memory)
         self.wind_speed = None
         self.wind_gust = None
+        self.wind_bearing = None
         self.rain_memory = RainMemory()
         self.rain_source = None
         self.rain = RainProtection("not_configured", self.rain_memory)

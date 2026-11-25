@@ -21,7 +21,13 @@ from .shading import (
     sun_on_facade,
     sunny_state,
 )
-from .wind import WindMemory, WindProtection, speed_kmh, wind_protection
+from .wind import (
+    WindMemory,
+    WindProtection,
+    bearing_degrees,
+    speed_kmh,
+    wind_protection,
+)
 
 SCREEN_RETRY_SECONDS = 120
 
@@ -261,15 +267,16 @@ class ShadingRuntimeMixin:
                 occupied=self.zone_bands[zone.id][0] == "comfort"
                 or self.thermostat(zone.id).manual,
             )
-            protective = self.wind.open_required or self.rain.open_required
-            if self.wind.open_required:
+            wind = self.wind.for_facade(self.wind_bearing, zone.facade)
+            protective = wind.open_required or self.rain.open_required
+            if wind.open_required:
                 decision = ScreenDecision(
                     "open",
                     100,
                     "wind"
-                    if self.wind.status == "wind"
+                    if wind.status == "wind"
                     else "wind_calming"
-                    if self.wind.status == "calming"
+                    if wind.status == "calming"
                     else "wind_unknown",
                 )
             elif self.rain.open_required:
@@ -283,14 +290,14 @@ class ShadingRuntimeMixin:
                     else "rain_unknown",
                 )
             elif (
-                (self.rain.block_closing or self.wind.block_closing)
+                (self.rain.block_closing or wind.block_closing)
                 and decision.position is not None
                 and decision.position < 100
             ):
                 decision = ScreenDecision(
                     "hold",
                     None,
-                    "wind_unknown" if self.wind.block_closing else "rain_unknown",
+                    "wind_unknown" if wind.block_closing else "rain_unknown",
                 )
             override = self.screen_overrides.get(item.id)
             if override is not None and now >= override:
@@ -447,7 +454,7 @@ class ShadingRuntimeMixin:
     def wind_mode(self):
         settings = self.building.settings
         return (
-            "limits_and_weather"
+            "limits"
             if settings.screen_wind_speed_limit is not None
             or settings.screen_wind_gust_limit is not None
             else "weather_condition"
@@ -472,14 +479,15 @@ class ShadingRuntimeMixin:
             return None
         return state
 
-    def _wind_readings(self, now):
-        state = self._wind_state(now)
+    @staticmethod
+    def _wind_readings(state):
         if state is None:
-            return None, None
+            return None, None, None
         unit = state.attributes.get("wind_speed_unit")
-        return tuple(
-            speed_kmh(state.attributes.get(key), unit)
-            for key in ("wind_speed", "wind_gust_speed")
+        return (
+            speed_kmh(state.attributes.get("wind_speed"), unit),
+            speed_kmh(state.attributes.get("wind_gust_speed"), unit),
+            bearing_degrees(state.attributes.get("wind_bearing")),
         )
 
     def _wind_expiry(self, now):
@@ -508,46 +516,45 @@ class ShadingRuntimeMixin:
         if policy != self.wind_policy:
             memory = WindMemory(memory.active)
         self.wind_policy = policy
-        self.wind_speed, self.wind_gust = self._wind_readings(now)
+        state = self._wind_state(now)
+        self.wind_speed, self.wind_gust, self.wind_bearing = self._wind_readings(state)
         if not self._wind_configured():
             status = (
                 "disabled" if not settings.screen_wind_protection else "not_configured"
             )
             self.wind = WindProtection(status, WindMemory())
         else:
-            self.wind = wind_protection(
-                self.wind_speed,
-                self.wind_gust,
-                settings.screen_wind_speed_limit,
-                settings.screen_wind_gust_limit,
-                memory,
-                now,
-                settings.screen_wind_calm_minutes,
-                condition=state.state
-                if (state := self._wind_state(now)) is not None
-                else None,
+            self.wind = self._evaluate_wind(
+                self.wind_speed, self.wind_gust, state, memory, now
             )
         self.wind_memory = self.wind.memory
         if self.wind_memory != memory:
             self._save_screen_state()
 
-    def _wind_blocks_closing(self, now):
-        if not self._wind_configured():
-            return False
+    def _evaluate_wind(self, speed, gust, state, memory, now):
         settings = self.building.settings
-        speed, gust = self._wind_readings(now)
         return wind_protection(
             speed,
             gust,
             settings.screen_wind_speed_limit,
             settings.screen_wind_gust_limit,
-            self.wind_memory,
+            memory,
             now,
             settings.screen_wind_calm_minutes,
-            condition=state.state
-            if (state := self._wind_state(now)) is not None
-            else None,
-        ).block_closing
+            condition=state.state if state is not None else None,
+        )
+
+    def _wind_blocks_closing(self, item, now):
+        if not self._wind_configured():
+            return False
+        state = self._wind_state(now)
+        speed, gust, bearing = self._wind_readings(state)
+        facade = next(
+            (zone.facade for zone in self.building.zones if zone.id == item.zone_id),
+            None,
+        )
+        wind = self._evaluate_wind(speed, gust, state, self.wind_memory, now)
+        return wind.for_facade(bearing, facade).block_closing
 
     def _rain_source(self):
         settings = self.building.settings
@@ -649,7 +656,7 @@ class ShadingRuntimeMixin:
         if (
             position is not None
             and position < 100
-            and self._wind_blocks_closing(dt_util.utcnow())
+            and self._wind_blocks_closing(item, dt_util.utcnow())
         ):
             return "wind_blocked"
         if (

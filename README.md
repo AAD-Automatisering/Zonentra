@@ -74,17 +74,22 @@ ook een aparte `weather`- of `binary_sensor`-regenbron kiezen. De screensensor
 verklaart de regenstatus en droogtijd. Pirate Weather kan een lokale bui missen
 of vertraagd melden; een fysieke regensensor reageert op de locatie zelf.
 
-**Windbeveiliging** gebruikt eveneens de centrale weerentiteit. De actuele melding
-`windy`/`windy-variant` haalt screens omhoog. Aparte fabrikantgrenzen voor
-windsnelheid en windstoten kun je in **Zonwering** toevoegen in km/u; er worden
-geen grenswaarden aangenomen. Zonder bekende grenzen werkt alleen de windmelding
-van de weerprovider. Na een alarm wacht Zonentra **30 minuten zonder windmelding**;
-met ingestelde grenzen moeten de beoordeelde waarden ook onder 80% van hun grens
-blijven. Regen en wind moeten beide vrijgeven voordat de zonregeling weer sluit.
+**Windbeveiliging** gebruikt eveneens de centrale weerentiteit. In **Zonwering**
+kun je aparte fabrikantgrenzen voor windsnelheid en windstoten instellen in km/u.
+Zodra minstens één grens is ingesteld, gebruikt Zonentra de bijbehorende meetwaarden.
+Met beide grenzen leeg haalt de actuele melding `windy`/`windy-variant` de screens
+omhoog. Na een alarm wacht Zonentra standaard **30 minuten**. Met ingestelde grenzen
+moeten de beoordeelde waarden op of onder 80% van hun grens blijven. Met beide grenzen
+leeg moet de windmelding de hele periode wegblijven. Regen en wind moeten beide
+vrijgeven voordat de zonregeling weer sluit.
+Zonentra vergelijkt de gemelde windrichting met de gevel van elk screen. Wind
+van voren of opzij (tot en met 90° van de gevelrichting) telt mee. Bij wind van
+achter de gevel volgt het screen de normale regeling. Bij ontbrekende of ongeldige
+windrichting of een onbekende gevel blijft de windbeveiliging van toepassing.
 Onbruikbare of verouderde weerdata geven een actief alarm niet vrij. De screensensor
-toont windstatus, werkwijze, actuele waarden en grenzen. Pirate Weather kan lokale
-windstoten missen; deze aanvullende regeling geeft geen garantie voor de windbelasting
-van een specifieke screen.
+toont de windstatus voor de gevel, de windrichting, actuele waarden en grenzen.
+Pirate Weather kan lokale windstoten missen; deze aanvullende regeling geeft geen
+garantie voor de windbelasting van een specifieke screen.
 
 Laat geen andere regeling dezelfde apparaten tegelijk aansturen.
 

@@ -8,7 +8,13 @@ from pytest_homeassistant_custom_component.common import async_mock_service
 
 from custom_components.zonentra.diagnostics import async_get_config_entry_diagnostics
 from custom_components.zonentra.models import build_model
-from custom_components.zonentra.wind import WindMemory, speed_kmh, wind_protection
+from custom_components.zonentra.wind import (
+    WindMemory,
+    bearing_degrees,
+    speed_kmh,
+    wind_protection,
+)
+from tests.test_entry_layout import add_zone, zone_options
 from tests.test_followup_improvements import restart_central
 from tests.test_rain_protection import WEATHER, lower_screen
 from tests.test_shading_runtime import EQUIPMENT, SCREEN, office
@@ -83,11 +89,18 @@ def test_known_dangerous_wind_wins_over_missing_other_reading():
     )
 
 
-async def report_wind(hass, speed=0, gust=0, unit="km/h", condition="sunny"):
+async def report_wind(
+    hass, speed=0, gust=0, unit="km/h", condition="sunny", *, bearing=None
+):
     hass.states.async_set(
         WEATHER,
         condition,
-        {"wind_speed": speed, "wind_gust_speed": gust, "wind_speed_unit": unit},
+        {
+            "wind_speed": speed,
+            "wind_gust_speed": gust,
+            "wind_speed_unit": unit,
+            "wind_bearing": bearing,
+        },
     )
     await hass.async_block_till_done()
 
@@ -130,6 +143,85 @@ async def test_wind_readings_use_published_units(hass):
     assert runtime.wind_speed == pytest.approx(43.2)
     assert runtime.wind.status == "wind"
     assert [call.data["position"] for call in moves] == [100]
+
+
+@pytest.mark.parametrize(
+    "bearing,facade,opens",
+    [
+        (69, "east", True),
+        (69, "west", False),
+        (350, "north", True),
+        (360, "east", True),  # Crosswind at exactly 90°.
+        (270, None, True),
+        (None, "west", True),
+        ("E", "west", True),
+        (True, "west", True),
+        (float("nan"), "west", True),
+        (361, "west", True),
+    ],
+)
+def test_wind_alarm_applies_to_facade(bearing, facade, opens):
+    alarm = wind_protection(45, 55, 40, 50, WindMemory(), dt_util.utcnow(), 30)
+    wind = alarm.for_facade(bearing_degrees(bearing), facade)
+    assert wind.open_required == wind.block_closing == opens
+
+
+async def test_wind_opens_only_exposed_screens_and_rechecks_direction(hass):
+    north_screen = "cover.north_screen"
+    hass.states.async_set(north_screen, "closed", {"current_position": 0})
+    central, _, moves = await windy_office(hass)
+    north_room = await add_zone(
+        hass, zone_options("north", shading_entities=[north_screen], facade="north")
+    )
+    runtime = central.runtime_data
+    runtime.set_thermostat("north", screen_regulation=True)
+    await lower_screen(hass, runtime)  # The screen from office() faces south.
+    south = next(
+        item for item in runtime.building.equipment if item.entity_id == SCREEN
+    )
+    north = next(
+        item for item in runtime.building.equipment if item.entity_id == north_screen
+    )
+
+    await report_wind(hass, 45, 55, bearing=180)
+    assert [call.data["entity_id"] for call in moves] == [SCREEN]
+    data = await async_get_config_entry_diagnostics(hass, north_room)
+    assert data["screen_wind"]["bearing"] == 180
+    assert data["screens"][0]["wind_status"] == "leeward"
+    assert runtime._screen_guard(south, position=0) == "wind_blocked"
+    assert runtime._screen_guard(north, position=0) is None
+    hass.states.async_set(SCREEN, "open", {"current_position": 100})
+    hass.states.async_set(
+        WEATHER,
+        "sunny",
+        {
+            "wind_speed": 45,
+            "wind_gust_speed": 55,
+            "wind_speed_unit": "km/h",
+            "wind_bearing": 0,
+        },
+    )
+    assert runtime._screen_guard(south, position=0) is None
+    assert runtime._screen_guard(north, position=0) == "wind_blocked"
+    await hass.async_block_till_done()
+    assert [call.data["entity_id"] for call in moves] == [SCREEN, north_screen]
+
+
+@pytest.mark.parametrize("condition", ["windy", "windy-variant"])
+async def test_wind_condition_does_not_reopen_manually_lowered_screen(hass, condition):
+    central, _, moves = await windy_office(hass)
+    runtime = central.runtime_data
+    await report_wind(hass, 25.88, 38.83, condition=condition)
+    await lower_screen(hass, runtime)
+    assert runtime.wind.status == "calm"
+    assert moves == []
+
+    await report_wind(hass, 25.88, 50, condition=condition)
+    assert runtime.wind.status == "wind"
+    assert [call.data["position"] for call in moves] == [100]
+
+    await report_wind(hass, 25.88, 38.83, condition=condition)
+    assert runtime.wind.status == "calming"
 
 
 async def test_wind_and_rain_both_must_release_before_closing(hass, freezer):
@@ -188,7 +280,7 @@ async def test_without_known_thresholds_uses_current_windy_condition(hass):
 
 async def test_unknown_gust_blocks_lowering_without_inventing_wind_alarm(hass, freezer):
     central, _, moves = await windy_office(hass)
-    await report_wind(hass, 10, None)
+    await report_wind(hass, 10, None, condition="windy")
     await later(hass, freezer, minutes=10)
     assert central.runtime_data.wind.status == "unknown"
     assert not central.runtime_data.wind.open_required
@@ -240,6 +332,7 @@ async def test_diagnostics_explain_wind_without_exposing_source(hass):
         data = await async_get_config_entry_diagnostics(hass, entry)
         assert WEATHER not in str(data)
         assert data["screen_wind"]["status"] == "wind"
+        assert data["screen_wind"]["mode"] == "limits"
         assert data["screen_wind"]["entity_id"] == "**REDACTED**"
         assert data["screen_wind"]["gust_kmh"] == 55
 
@@ -287,12 +380,6 @@ def test_current_wind_condition_is_protective_without_guessed_limits(condition):
         ).status
         == "calm"
     )
-
-
-def test_provider_wind_alarm_wins_when_configured_speed_readings_are_missing():
-    assert wind_protection(
-        None, None, 40, 50, WindMemory(), dt_util.utcnow(), 30, condition="windy"
-    ).open_required
 
 
 @pytest.mark.parametrize("value,unit", [(1e308, "m/s"), (10, {}), (10, [])])

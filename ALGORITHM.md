@@ -927,14 +927,18 @@ regeling voeden. Broncontrole: [Pirate Weather 1.9.2 weather.py](https://github.
 ## Windbeveiliging via actuele weergegevens
 
 `screen_wind_protection` staat standaard aan en gebruikt de centrale weather-bron.
-Actuele `windy`/`windy-variant` geeft direct hetzelfde beschermende openingsdoel als
-regen. Dit werkt ook zolang fabrikantgrenzen onbekend zijn; er wordt geen numerieke
-veiligheidsgrens verzonnen. `screen_wind_speed_limit` en `screen_wind_gust_limit`
-zijn afzonderlijk optioneel in km/u. Een ingestelde grens wordt ook beoordeeld:
-wind >= grens of windstoot >= grens vraagt direct omhoog, ongeacht of de andere
-waarde beschikbaar is. De weerprovider-windmelding blijft een extra reden om te
-openen, ook met ingestelde grenzen. Richting, gevel en voorspellingen spelen voor
-dit beschermende doel geen rol.
+`screen_wind_speed_limit` en `screen_wind_gust_limit` zijn afzonderlijk optioneel in
+km/u. Zodra minstens één grens is ingesteld, bepalen de bijbehorende meetwaarden
+het openingsdoel. Wind of windstoten op of boven de ingestelde grens vragen direct
+omhoog, ook als de andere waarde ontbreekt. Zonder ingestelde grenzen geeft een
+actuele melding `windy`/`windy-variant` hetzelfde beschermende openingsdoel als regen.
+De actuele `wind_bearing` is de richting waar de wind vandaan komt, in graden met
+noord op 0°. Bij een verschil van maximaal 90° met de gevelrichting geldt het
+windalarm voor het screen, inclusief tijdens de rustige periode. Bij een groter
+verschil volgt het screen de gewone regeling. Zonder bruikbare windrichting of
+ingestelde gevel geldt het windalarm ook voor dat screen. Onbekende windstatus
+door ontbrekende meetwaarden of verouderde data behoudt de normale blokkade.
+Zonentra beoordeelt de gevel met actuele data opnieuw vlak vóór een sluitcommando.
 
 De weather-attributen `wind_speed` en `wind_gust_speed` gebruiken de gepubliceerde
 `wind_speed_unit`: km/h, m/s, mph, kn of ft/s worden omgerekend naar km/u. Negatieve,
@@ -942,9 +946,10 @@ niet-eindige of ontbrekende waarden en onbekende eenheden zijn geen nulmeting.
 Zonder numerieke grens telt uitsluitend een bekende actuele weerconditie; met
 grenzen moeten alle beoordeelde waarden beschikbaar zijn om sluiten vrij te geven.
 
-Een windalarm blijft staan tot de provider geen windmelding meer geeft en, waar
-grenzen zijn ingesteld, alle beoordeelde waarden <= 80% van hun grens zijn.
-Daarna moet dit onafgebroken `screen_wind_calm_minutes` (standaard 30) aanhouden.
+Met ingestelde grenzen begint de rustige periode zodra alle beoordeelde waarden
+op of onder 80% van hun grens liggen. Zonder ingestelde grenzen begint die periode
+bij een bekende actuele weerconditie zonder windmelding. Die periode moet onafgebroken
+`screen_wind_calm_minutes` (standaard 30) duren voordat het windalarm stopt.
 Ontbrekende, restored, assumed of te oude gegevens (`screen_wind_max_age_minutes`,
 standaard 60) resetten de rustige periode. Zonder eerder alarm blokkeren onbekende
 gegevens alleen sluiten; na alarm blijft ook het openingsdoel staan. Wind gaat

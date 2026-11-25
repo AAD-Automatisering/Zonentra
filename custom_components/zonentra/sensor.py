@@ -841,6 +841,7 @@ class ScreenSensor(ZonentraDiagnosticSensor):
         move = runtime.screen_moves.get(self.item.id)
         zone = next(z for z in runtime.building.zones if z.id == self.item.zone_id)
         active = runtime.thermostat(zone.id).screen_regulation
+        wind = runtime.wind.for_facade(runtime.wind_bearing, zone.facade)
         return {
             "simulation": not active,
             "screen_regulation": active,
@@ -851,16 +852,17 @@ class ScreenSensor(ZonentraDiagnosticSensor):
             ),
             "status": move.status if move else None,
             "next_check": _iso(move.next_check) if move else None,
-            "wind_status": runtime.wind.status,
+            "wind_status": wind.status,
             "wind_mode": runtime.wind_mode,
             "wind_speed_kmh": runtime.wind_speed,
             "wind_gust_kmh": runtime.wind_gust,
+            "wind_bearing": runtime.wind_bearing,
             "wind_speed_limit_kmh": runtime.building.settings.screen_wind_speed_limit,
             "wind_gust_limit_kmh": runtime.building.settings.screen_wind_gust_limit,
-            "wind_open_required": runtime.wind.open_required,
-            "wind_blocks_closing": runtime.wind.block_closing,
-            "wind_calm_since": _iso(runtime.wind.memory.calm_since),
-            "wind_release_at": _iso(runtime.wind.next_check),
+            "wind_open_required": wind.open_required,
+            "wind_blocks_closing": wind.block_closing,
+            "wind_calm_since": _iso(wind.memory.calm_since),
+            "wind_release_at": _iso(wind.next_check),
             "rain_status": runtime.rain.status,
             "rain_open_required": runtime.rain.open_required,
             "rain_blocks_closing": runtime.rain.block_closing,

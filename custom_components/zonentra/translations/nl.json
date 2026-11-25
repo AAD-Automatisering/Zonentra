@@ -157,7 +157,7 @@
       },
       "screens": {
         "title": "Zonwering",
-        "description": "Regenbeveiliging gebruikt de actuele toestand van de regenbron, standaard de centrale weerentiteit (ook Pirate Weather). Bij regen/onweer/neerslag direct omhoog; pas na de droogtijd weer zonwering. Omhoog negeert gewone wachttijden en handmatige pauzes. De blokkeer-entiteit blijft alle bewegingen blokkeren. Weerdata op afstand kunnen lokale regen missen of later melden. Windbeveiliging gebruikt actuele wind en windstoten van de centrale weerentiteit, met aparte fabrikantgrenzen in km/u. Zonder bekende fabrikantgrenzen wordt alleen de actuele melding windy/windy-variant gebruikt; dit is geen garantie dat de wind veilig is. Na alarm moeten de beoordeelde waarden gedurende de rustige periode onder 80% van hun grens blijven. Zowel wind- als regenbeveiliging moet vrijgeven voordat screens weer mogen zakken.",
+        "description": "Regenbeveiliging gebruikt de actuele toestand van de regenbron, standaard de centrale weerentiteit (ook Pirate Weather). Bij regen/onweer/neerslag direct omhoog; pas na de droogtijd weer zonwering. Omhoog negeert gewone wachttijden en handmatige pauzes. De blokkeer-entiteit blijft alle bewegingen blokkeren. Weerdata op afstand kunnen lokale regen missen of later melden. Windbeveiliging gebruikt actuele wind en windstoten van de centrale weerentiteit, met aparte fabrikantgrenzen in km/u. Zonder bekende fabrikantgrenzen wordt alleen de actuele melding windy/windy-variant gebruikt; dit is geen garantie dat de wind veilig is. Na alarm moeten de beoordeelde waarden gedurende de rustige periode op of onder 80% van hun grens blijven. Zowel wind- als regenbeveiliging moet vrijgeven voordat screens weer mogen zakken.",
         "data": {
           "sun_power_entity": "Vermogen zonnepanelen (zon schijnt)",
           "sun_power_threshold": "Vermogen waarboven de zon schijnt (W)",
@@ -180,8 +180,8 @@
         },
         "submit": "Toepassen en terug",
         "data_description": {
-          "screen_wind_protection": "Windbeveiliging heeft voorrang op handmatige bediening. Een actuele weermelding windy/windy-variant activeert de beveiliging ook als de gemeten wind onder de ingestelde grenzen ligt.",
-          "screen_wind_calm_minutes": "Na een windalarm begint deze periode pas als alle beoordeelde windwaarden maximaal 80% van hun ingestelde grens zijn en de actuele weermelding geen windy/windy-variant is. Bij grenzen van 40 km/u wind en 50 km/u windstoten betekent dit maximaal 32 en 40 km/u. Deze waarden moeten de hele periode rustig blijven; bij een hogere of ontbrekende waarde begint de wachttijd opnieuw.",
+          "screen_wind_protection": "Windbeveiliging heeft voorrang op handmatige bediening. Zodra minstens één windgrens is ingesteld, gebruikt Zonentra de bijbehorende meetwaarden. Als beide grenzen leeg zijn, activeert de actuele melding windy/windy-variant de beveiliging. Bij een bekende windrichting en gevel geldt de beveiliging voor wind van voren en opzij (tot en met 90°).",
+          "screen_wind_calm_minutes": "Na een windalarm begint deze periode zodra alle beoordeelde windwaarden maximaal 80% van hun ingestelde grens zijn. Met beide grenzen leeg moet de weermelding de hele periode geldig zijn en vrij blijven van windy/windy-variant. Bij grenzen van 40 km/u wind en 50 km/u windstoten betekent dit maximaal 32 en 40 km/u. Deze waarden moeten de hele periode rustig blijven; bij een hogere of ontbrekende waarde begint de wachttijd opnieuw.",
           "screen_override_minutes": "Pauzeert de gewone automatische zonweringregeling na handmatige bediening. Wind- en regenbeveiliging blijven voorrang houden en kunnen de zonwering alsnog omhoog sturen."
         }
       },

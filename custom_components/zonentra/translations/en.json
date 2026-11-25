@@ -180,8 +180,8 @@
         },
         "submit": "Apply and return",
         "data_description": {
-          "screen_wind_protection": "Wind protection takes priority over manual operation. A current windy/windy-variant weather condition also activates protection when measured wind is below the configured limits.",
-          "screen_wind_calm_minutes": "After a wind alarm, this period starts only when all checked wind readings are at or below 80% of their configured limits and the current weather condition is not windy/windy-variant. With limits of 40 km/h sustained wind and 50 km/h gusts, this means at most 32 and 40 km/h. Readings must stay calm for the entire period; a higher or missing reading restarts the wait.",
+          "screen_wind_protection": "Wind protection takes priority over manual operation. When at least one wind limit is set, Zonentra uses the corresponding readings. When both limits are empty, the current windy/windy-variant condition activates protection. When the wind direction and facade are known, protection applies to wind from the front and sides (up to 90°).",
+          "screen_wind_calm_minutes": "After a wind alarm, this period starts once all checked wind readings are at or below 80% of their configured limits. When both limits are empty, the current weather condition must remain valid and free of windy/windy-variant throughout the period. With limits of 40 km/h sustained wind and 50 km/h gusts, this means at most 32 and 40 km/h. Readings must stay calm for the entire period; a higher or missing reading restarts the wait.",
           "screen_override_minutes": "Pauses normal automatic shading control after manual operation. Wind and rain protection still take priority and may raise the shading."
         }
       },

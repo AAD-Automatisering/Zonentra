@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 
 from .rain import DRY_CONDITIONS, WET_CONDITIONS
+from .shading import FACADES
 
 WIND_CONDITIONS = frozenset({"windy", "windy-variant"})
 RELEASE_FACTOR = 0.8
@@ -26,6 +27,17 @@ def speed_kmh(value, unit):
     return converted if math.isfinite(converted) else None
 
 
+def bearing_degrees(value):
+    """Validate the direction the wind comes from, clockwise from north."""
+    if (
+        isinstance(value, (int, float))
+        and not isinstance(value, bool)
+        and 0 <= value <= 360
+    ):
+        return float(value % 360)
+    return None
+
+
 @dataclass(frozen=True)
 class WindMemory:
     active: bool = False
@@ -40,6 +52,19 @@ class WindProtection:
     block_closing: bool = False
     next_check: datetime | None = None
 
+    def for_facade(self, bearing, facade):
+        """Keep protection for windward facades, including crosswinds."""
+        if (
+            self.open_required
+            and self.status != "unknown"
+            and bearing is not None
+            and facade in FACADES
+        ):
+            angle = abs((bearing - FACADES[facade] + 180) % 360 - 180)
+            if angle > 90:
+                return WindProtection("leeward", WindMemory())
+        return self
+
 
 def wind_protection(
     speed, gust, speed_limit, gust_limit, memory, now, calm_minutes, *, condition=None
@@ -50,10 +75,13 @@ def wind_protection(
         for value, limit in ((speed, speed_limit), (gust, gust_limit))
         if limit is not None
     ]
-    if condition in WIND_CONDITIONS:
-        return WindProtection("wind", WindMemory(True), True, True)
-    if not checks and condition not in DRY_CONDITIONS | WET_CONDITIONS:
-        return WindProtection("unknown", WindMemory(memory.active), memory.active, True)
+    if not checks:
+        if condition in WIND_CONDITIONS:
+            return WindProtection("wind", WindMemory(True), True, True)
+        if condition not in DRY_CONDITIONS | WET_CONDITIONS:
+            return WindProtection(
+                "unknown", WindMemory(memory.active), memory.active, True
+            )
     if any(value is not None and value >= limit for value, limit in checks):
         return WindProtection("wind", WindMemory(True), True, True)
     if any(value is None for value, _ in checks):
