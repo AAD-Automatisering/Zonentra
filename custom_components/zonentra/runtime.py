@@ -5,7 +5,7 @@ from dataclasses import asdict, replace
 from datetime import datetime, timedelta
 
 from homeassistant.const import EVENT_STATE_CHANGED, UnitOfTemperature
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import CoreState, HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.entity_component import DATA_INSTANCES
@@ -2072,13 +2072,12 @@ class BuildingRuntime(
                 )
             elif new_value != "off":
                 recovery_until = self.unit_recovery_until.pop(item.id, None)
-                if (
-                    transition == "manual_on"
-                    and origin == "device"
-                    and recovery_until is not None
-                    and now < recovery_until
-                ):
-                    transition = "availability_recovery"
+                if transition == "manual_on" and origin == "device":
+                    if self.hass.state in (CoreState.not_running, CoreState.starting):
+                        # A device report can be startup feedback or a room controller.
+                        transition = "startup_recovery"
+                    elif recovery_until is not None and now < recovery_until:
+                        transition = "availability_recovery"
             if transition == "attribute_update" and trusted:
                 transition = self._setpoint_transition(entity_id, old, new, event, now)
             if transition in ("manual_on", "manual_off", "manual_setpoint"):

@@ -384,6 +384,7 @@ Bron: de state-events van de gekoppelde climate-entiteit. Classificatie van éé
 | zelfde state, andere attributen | attribute_update | ongewijzigd |
 | unknown/unavailable → actief | from_unavailable | nooit |
 | off → actief binnen 5 s nadat de unit als off beschikbaar werd, zonder gebruikers- of automatiseringscontext | availability_recovery | nooit |
+| off → actief tijdens het opstarten van HA, zonder gebruikers- of automatiseringscontext | startup_recovery | nooit |
 | entiteit verschijnt / HA-start / setup | initial / geen event | nooit |
 | restored of assumed_state | untrusted | nooit |
 | overeenkomend met een Zonentra-commando | zonentra_initiated | nooit |

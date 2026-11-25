@@ -4,6 +4,7 @@ import json
 from datetime import timedelta
 
 import pytest
+from homeassistant.core import CoreState
 from homeassistant.util import dt as dt_util
 
 from custom_components.zonentra.diagnostics import async_get_config_entry_diagnostics
@@ -550,6 +551,41 @@ async def test_automation_and_startup_do_not_authorize_room_use(hass):
     assert runtime.zone_bands["west"][0] == "away"
     runtime.refresh()
     assert not runtime.room_controller_use
+
+
+@pytest.mark.parametrize("startup_state", [CoreState.not_running, CoreState.starting])
+async def test_device_start_during_ha_startup_does_not_authorize_comfort(
+    hass, freezer, startup_state
+):
+    unit = "climate.west_ac"
+    motion = "binary_sensor.west_motion"
+    hass.states.async_set(motion, "off")
+    central, _, _ = await office(hass, start=240, occupancy_entity=motion)
+    runtime = central.runtime_data
+    hass.set_state(startup_state)
+    try:
+        hass.states.async_set(PRESENCE, "on")
+        hass.states.async_set(
+            SCHEDULE, "on", {"next_event": dt_util.utcnow() + timedelta(hours=8)}
+        )
+        hass.states.async_set(unit, "unavailable")
+        await hass.async_block_till_done()
+        hass.states.async_set(unit, "off")
+        await hass.async_block_till_done()
+        await later(hass, freezer, seconds=10)
+        hass.states.async_set(unit, "heat")
+        await hass.async_block_till_done()
+        assert runtime.zone_bands["west"] == ("eco", "no_motion")
+        assert not runtime.room_controller_use
+        assert not runtime.manual_events
+    finally:
+        hass.set_state(CoreState.running)
+
+    hass.states.async_set(unit, "off")
+    await hass.async_block_till_done()
+    hass.states.async_set(unit, "heat")
+    await hass.async_block_till_done()
+    assert runtime.zone_bands["west"] == ("comfort", "room_controller_use")
 
 
 async def test_real_alarm_releases_manual_hold_and_sends_stop(hass, freezer):
