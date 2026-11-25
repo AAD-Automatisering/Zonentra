@@ -25,7 +25,7 @@ class OfficePlan(BookingPlan):
 
 class OfficeRuntimeMixin:
     def _update_room_controller_use(self, transitions, sources):
-        """Keep observed manual use until switch-off/arming, across closing time.
+        """Keep recognized manual use until switch-off/arming, across closing time.
 
         A running unit at startup, an automation or our own command is no proof
         of manual use. Without opening hours the timed override policy remains.

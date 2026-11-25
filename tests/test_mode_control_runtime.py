@@ -106,8 +106,8 @@ async def test_wrong_manual_mode_is_corrected_and_automation_is_no_override(
     central, _ = await office(hass)
     runtime = central.runtime_data
     set_mode.clear()
-    # A person switches the unit on in cool at the room controller.
-    hass.states.async_set(UNIT, "cool")
+    # A Home Assistant user switches the unit on in cool.
+    hass.states.async_set(UNIT, "cool", context=Context(user_id="user"))
     await hass.async_block_till_done()
     assert runtime.last_transitions["hvac_west_ac"][0] == "manual_on"
     assert "hvac_west_ac" in runtime.overrides
@@ -123,12 +123,12 @@ async def test_wrong_manual_mode_is_corrected_and_automation_is_no_override(
     hass.states.async_set(UNIT, "heat")  # The integration applies the correction.
     await hass.async_block_till_done()
     assert "hvac_west_ac" in runtime.overrides  # A correction never ends it.
-    hass.states.async_set(UNIT, "off")
+    hass.states.async_set(UNIT, "off", context=Context(user_id="user"))
     await hass.async_block_till_done()
     # An automation switching a unit on is not a manual override.
     hass.states.async_set(UNIT, "heat", context=Context(parent_id="automation-run"))
     await hass.async_block_till_done()
-    assert runtime.last_transitions["hvac_west_ac"][0] == "automation_on"
+    assert runtime.last_transitions["hvac_west_ac"][0] == "external_on"
     assert "hvac_west_ac" not in runtime.overrides
 
 
@@ -147,7 +147,7 @@ async def test_kill_switch_stops_commands_and_group_change_switches_units(
         "switch", "turn_off", {"entity_id": switch_id(hass, central)}, blocking=True
     )
     await hass.async_block_till_done()
-    hass.states.async_set(UNIT, "heat")  # A person runs the unit.
+    hass.states.async_set(UNIT, "heat", context=Context(user_id="user"))
     await hass.async_block_till_done()
     assert central.runtime_data.last_transitions["hvac_west_ac"][0] == "manual_on"
     freezer.move_to(dt_util.utcnow() + timedelta(hours=1))

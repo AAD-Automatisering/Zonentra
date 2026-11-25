@@ -378,25 +378,21 @@ Bron: de state-events van de gekoppelde climate-entiteit. Classificatie van éé
 
 | Overgang | Classificatie | Override |
 |---|---|---|
-| off → heat/cool/dry/fan_only/auto/heat_cool | manual_on | start (tenzij uitgeschakeld) |
-| actief → off | manual_off | eindigt |
+| off → actief met HA-gebruikerscontext | manual_on | start (tenzij uitgeschakeld) |
+| actief → off met HA-gebruikerscontext | manual_off | eindigt, of start een pauze bij ruimteregeling |
+| off ↔ actief zonder HA-gebruikerscontext | external_on / external_off | ongewijzigd |
 | actief → andere actieve modus | mode_change | ongewijzigd (timer niet verlengd) |
 | zelfde state, andere attributen | attribute_update | ongewijzigd |
 | unknown/unavailable → actief | from_unavailable | nooit |
-| off → actief binnen 5 s nadat de unit als off beschikbaar werd, zonder gebruikers- of automatiseringscontext | availability_recovery | nooit |
-| off → actief tijdens het opstarten van HA, zonder gebruikers- of automatiseringscontext | startup_recovery | nooit |
 | entiteit verschijnt / HA-start / setup | initial / geen event | nooit |
 | restored of assumed_state | untrusted | nooit |
 | overeenkomend met een Zonentra-commando | zonentra_initiated | nooit |
 
 Same-value-rapporten (`state_reported`) en timers zijn geen overgangen.
-**Beperking:** HA-events bewijzen de herkomst niet. De runtime herkent een
-HA-gebruiker aan `user_id` en een automation/script aan `parent_id`. Een herkende
-automation die een unit aanzet start geen override. Een overgang met kale context
-kan van een roomcontroller komen en telt buiten de herstelperiode als handmatige bediening.
-Bij de eerste meting na een herstart telt ook een recent gemelde `off` mee als
-Zonentra de overgang zelf heeft gemist. De vijf seconden lopen vanaf de
-statuswijziging in Home Assistant.
+De runtime herkent een HA-gebruiker aan `user_id` en een automation/script aan
+`parent_id`. Een overgang zonder gebruikerscontext kan van de roomcontroller
+of van de gateway komen. Daarom telt die uitsluitend als actuele aircostatus,
+ook als de melding ruim na een herstart binnenkomt.
 
 `CommandTracker` registreert voor de actieve aansturing per entiteit de
 verwachte state met een begrensde bevestigingsperiode (60 s). Alleen een
@@ -446,10 +442,9 @@ wordt niets gestuurd en ook niets als "gezet" onthouden. De schakelaar per groep
 uit-pulsen; tot hij na een herstart is hersteld, wordt niets gestuurd. De laatst
 gezette stand staat in HA-opslag en overleeft herstarts.
 
-**Herkomst van overgangen** (Manual Override): de HA-context van het
-`state_changed`-event. Een gebruiker (`user_id`) of een kale context (KNX-roomcontroller)
-→ `manual_on`; een context met `parent_id` (automation/script) → `automation_on`,
-geen override. Dit is een sterke aanwijzing, geen bewijs.
+**Herkomst van overgangen** (Manual Override): alleen de gebruikerscontext
+van het HA-event `state_changed` kan een statuswijziging van een gekoppelde
+airco als handmatige bediening kwalificeren.
 
 ## Ruimtethermostaat en ruimteregeling (0.9)
 
@@ -802,8 +797,9 @@ ruimteautorisatie. Expliciete manual_setpoint blijft een tijdelijke overname.
 Handmatig uit, gebouw afwezig, thermostaat-uit, Eco/Afwezig of het
 verwijderen van schema/aanwezigheid/handmatige overname beëindigt die autorisatie.
 De autorisatie blijft over sluiting en configuratieherladen bestaan, maar niet
-over een HA-herstart. Automatiseringen, eigen opdrachten en initiële states
-starten haar nooit. Zonder gekoppeld schema en aanwezigheid blijft de bestaande
+over een HA-herstart. Automatiseringen, eigen opdrachten, initiële states en
+apparaatmeldingen zonder gebruikerscontext starten haar nooit. Zonder gekoppeld
+schema en aanwezigheid blijft de bestaande
 getimede overname gelden. Het schema verandert
 nooit gebouwpresentie. Onbekende, herstelde of onbruikbare schemabronnen vragen geen
 voorbereiding. Een verplaatste/verwijderde opening annuleert de vorige voorbereiding.
@@ -1096,7 +1092,7 @@ ruimteregeling, presets en veiligheidsvoorwaarden behouden hun werking.
 via `workday_presence_suppressed` tot bewezen gebouwafwezigheid. Eigen stopopdrachten
 gelden niet als manual_off. Onderdrukking overleeft configuratieherladen, maar
 geen HA-herstart. Uitschakelen van de optie of verwijderen van de ruimte wist de
-bijbehorende onderdrukking. Handmatige roomcontroller-sessies blijven onafhankelijk
+bijbehorende onderdrukking. Sessies gestart door een herkende HA-gebruiker blijven onafhankelijk
 en zijn ook in het weekend en na 12:00 toegestaan.
 
 
@@ -1133,5 +1129,5 @@ Configuratieherladen bewaart de status alleen bij dezelfde schema-, werkdag- en
 aanwezigheidsbron. Een volledige HA-herstart begint zonder bewijs van eerder
 werkdaggebruik; een disarmed alarm na sluitingstijd wordt niet als eerdere
 werkdagaanwezigheid aangenomen. Daardoor activeert een nieuwe vroege/weekendvisit
-nooit stilzwijgend het hele gebouw. Een expliciete roomcontroller-start en de
+nooit stilzwijgend het hele gebouw. Een door HA aan een gebruiker gekoppelde start en de
 gekozen werkdagruimte blijven onafhankelijke bronnen van comfortvraag.

@@ -151,7 +151,7 @@
         },
         "submit": "Toepassen en terug",
         "data_description": {
-          "manual_override_enabled": "Zonder openingsschema en gebouwaanwezigheid pauzeert handmatig inschakelen de automatische aansturing tijdelijk. Met beide ingesteld geeft handmatig inschakelen bij aanwezigheid en comfort blijvend ruimtegebruik; temperatuur en ventilator blijven automatisch geregeld. Handmatig uitschakelen en temperatuurwijzigingen door een Home Assistant-gebruiker worden tijdelijk gerespecteerd. Dit staat los van tijdelijke temperatuurdoelen op de Zonentra-thermostaat.",
+          "manual_override_enabled": "Zonder openingsschema en gebouwaanwezigheid pauzeert handmatig inschakelen de automatische aansturing tijdelijk. Met beide ingesteld geeft handmatig inschakelen bij aanwezigheid en comfort blijvend ruimtegebruik; temperatuur en ventilator blijven automatisch geregeld. Handmatig uitschakelen en temperatuurwijzigingen door een Home Assistant-gebruiker worden tijdelijk gerespecteerd. Voor de overname is een Home Assistant-gebruikerscontext vereist. Losse aircomeldingen werken alleen de actuele toestand bij. Dit staat los van tijdelijke temperatuurdoelen op de Zonentra-thermostaat.",
           "setpoint_interval_seconds": "Wordt per airco gebruikt voor zowel setpointregeling als automatische ventilatorstanden."
         }
       },

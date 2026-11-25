@@ -4,7 +4,7 @@ import json
 from datetime import timedelta
 
 import pytest
-from homeassistant.core import CoreState
+from homeassistant.core import Context, CoreState
 from homeassistant.util import dt as dt_util
 
 from custom_components.zonentra.diagnostics import async_get_config_entry_diagnostics
@@ -284,8 +284,6 @@ async def test_winter_starts_earlier_and_rooms_share_schedule_not_start_time(has
 
 
 async def test_office_learns_from_actual_heating(hass, freezer):
-    from homeassistant.core import Context
-
     await mock_climate(hass)
     central, _, _ = await office(hass, start=20, temperature="20")
     runtime = central.runtime_data
@@ -493,7 +491,9 @@ async def test_disarming_outside_hours_only_allows_manually_selected_room(
     assert runtime.zone_bands["west"] == ("away", "outside_office_hours")
     assert runtime.zone_bands["east"][0] == "away"
 
-    hass.states.async_set("climate.west_ac", "heat", {"temperature": 22})
+    hass.states.async_set(
+        "climate.west_ac", "heat", {"temperature": 22}, context=Context(user_id="user")
+    )
     await hass.async_block_till_done()
     assert runtime.zone_bands["west"] == ("comfort", "room_controller_use")
     assert runtime.zone_bands["east"][0] == "away"
@@ -525,7 +525,9 @@ async def test_room_controller_use_continues_after_closing_until_manual_off(
     hass.states.async_set(SCHEDULE, "on", {"next_event": opening})
     await hass.async_block_till_done()
     assert runtime.zone_bands["west"][0] == "comfort"
-    hass.states.async_set("climate.west_ac", "heat", {"temperature": 22})
+    hass.states.async_set(
+        "climate.west_ac", "heat", {"temperature": 22}, context=Context(user_id="user")
+    )
     await hass.async_block_till_done()
     hass.states.async_set(SCHEDULE, "off", {"next_event": opening + timedelta(days=1)})
     await hass.async_block_till_done()
@@ -533,13 +535,18 @@ async def test_room_controller_use_continues_after_closing_until_manual_off(
     assert runtime.zone_bands["west"] == ("comfort", "room_controller_use")
     hass.states.async_set("climate.west_ac", "off", {"temperature": 22})
     await hass.async_block_till_done()
+    assert runtime.zone_bands["west"] == ("comfort", "room_controller_use")
+    hass.states.async_set("climate.west_ac", "heat", {"temperature": 22})
+    await hass.async_block_till_done()
+    hass.states.async_set(
+        "climate.west_ac", "off", {"temperature": 22}, context=Context(user_id="user")
+    )
+    await hass.async_block_till_done()
     assert not runtime.room_controller_use
     assert runtime.zone_bands["west"][0] == "away"
 
 
 async def test_automation_and_startup_do_not_authorize_room_use(hass):
-    from homeassistant.core import Context
-
     central, _, _ = await office(hass, start=240)
     runtime = central.runtime_data
     hass.states.async_set(PRESENCE, "on")
@@ -553,10 +560,10 @@ async def test_automation_and_startup_do_not_authorize_room_use(hass):
     assert not runtime.room_controller_use
 
 
-@pytest.mark.parametrize("startup_state", [CoreState.not_running, CoreState.starting])
-async def test_device_start_during_ha_startup_does_not_authorize_comfort(
-    hass, freezer, startup_state
-):
+@pytest.mark.parametrize(
+    "startup_state", [CoreState.not_running, CoreState.starting, CoreState.running]
+)
+async def test_airco_feedback_does_not_authorize_comfort(hass, freezer, startup_state):
     unit = "climate.west_ac"
     motion = "binary_sensor.west_motion"
     hass.states.async_set(motion, "off")
@@ -581,9 +588,18 @@ async def test_device_start_during_ha_startup_does_not_authorize_comfort(
     finally:
         hass.set_state(CoreState.running)
 
-    hass.states.async_set(unit, "off")
-    await hass.async_block_till_done()
-    hass.states.async_set(unit, "heat")
+    for mode, attrs in (
+        ("cool", {"temperature": 23}),
+        ("cool", {"temperature": 24, "fan_mode": "25%"}),
+        ("off", {}),
+    ):
+        hass.states.async_set(unit, mode, attrs)
+        await hass.async_block_till_done()
+        assert runtime.unit_intents["hvac_west_ac"].observed_mode == mode
+        assert not runtime.manual_events
+        assert not runtime.overrides
+
+    hass.states.async_set(unit, "heat", context=Context(user_id="user"))
     await hass.async_block_till_done()
     assert runtime.zone_bands["west"] == ("comfort", "room_controller_use")
 
@@ -600,7 +616,9 @@ async def test_real_alarm_releases_manual_hold_and_sends_stop(hass, freezer):
     clear(mocks)
     assert runtime.zone_bands["west"][0] == "away"
     assert not mocks["set_hvac_mode"]
-    hass.states.async_set("climate.west_ac", "heat", {"temperature": 22})
+    hass.states.async_set(
+        "climate.west_ac", "heat", {"temperature": 22}, context=Context(user_id="user")
+    )
     await hass.async_block_till_done()
     await later(hass, freezer, minutes=90)
     assert "hvac_west_ac" not in runtime.overrides
@@ -621,7 +639,7 @@ async def test_explicit_thermostat_choice_ends_room_controller_use(hass, changes
     central, _, _ = await office(hass, start=300)
     runtime = central.runtime_data
     hass.states.async_set(PRESENCE, "on")
-    hass.states.async_set("climate.west_ac", "heat")
+    hass.states.async_set("climate.west_ac", "heat", context=Context(user_id="user"))
     await hass.async_block_till_done()
     assert runtime.room_controller_use
     runtime.set_thermostat("west", **changes)
@@ -727,7 +745,7 @@ async def test_weekend_never_automatically_activates_selected_room(hass, freezer
     hass.states.async_set(PRESENCE, "on")
     await hass.async_block_till_done()
     assert runtime.zone_bands["west"][0] == "away"
-    hass.states.async_set("climate.west_ac", "heat")
+    hass.states.async_set("climate.west_ac", "heat", context=Context(user_id="user"))
     await hass.async_block_till_done()
     assert runtime.zone_bands["west"] == ("comfort", "room_controller_use")
 
@@ -758,7 +776,7 @@ async def test_manual_off_suppresses_workday_exception_until_next_alarm_cycle(
     runtime.command_tracker.register("climate.west_ac", "heat", dt_util.utcnow())
     hass.states.async_set("climate.west_ac", "heat")
     await hass.async_block_till_done()
-    hass.states.async_set("climate.west_ac", "off")
+    hass.states.async_set("climate.west_ac", "off", context=Context(user_id="user"))
     await hass.async_block_till_done()
     assert runtime.zone_bands["west"][0] == "away"
     await later(hass, freezer, minutes=45)
@@ -842,7 +860,7 @@ async def test_morning_option_can_enable_multiple_rooms_and_stop_one(hass):
     runtime.command_tracker.register("climate.west_ac", "heat", dt_util.utcnow())
     hass.states.async_set("climate.west_ac", "heat")
     await hass.async_block_till_done()
-    hass.states.async_set("climate.west_ac", "off")
+    hass.states.async_set("climate.west_ac", "off", context=Context(user_id="user"))
     await hass.async_block_till_done()
     assert runtime.zone_bands["west"][0] == "away"
     assert runtime.zone_bands["east"] == ("comfort", "workday_presence")
@@ -915,6 +933,7 @@ async def test_room_controller_use_keeps_setpoint_fan_and_learning_active(
             "fan_mode": "25%",
             "fan_modes": ["25%", "50%", "75%", "100%"],
         },
+        context=Context(user_id="user"),
     )
     await hass.async_block_till_done()
     equipment = "hvac_west_ac"
@@ -957,7 +976,9 @@ async def test_reload_migrates_old_indefinite_override_without_losing_room_use(h
     central, _, _ = await office(hass, start=300)
     runtime = central.runtime_data
     hass.states.async_set(PRESENCE, "on")
-    hass.states.async_set("climate.west_ac", "heat", {"temperature": 22})
+    hass.states.async_set(
+        "climate.west_ac", "heat", {"temperature": 22}, context=Context(user_id="user")
+    )
     await hass.async_block_till_done()
     equipment = "hvac_west_ac"
     runtime.overrides[equipment] = ManualOverride(
@@ -990,14 +1011,14 @@ async def test_screen_remote_does_not_start_airco_room_use(hass):
 async def test_explicit_user_setpoint_still_temporarily_pauses_room_controller_use(
     hass, freezer
 ):
-    from homeassistant.core import Context
-
     await mock_climate(hass)
     central, _, _ = await office(hass, start=300)
     runtime = central.runtime_data
     runtime.set_thermostat("west", regulation=True)
     hass.states.async_set(PRESENCE, "on")
-    hass.states.async_set("climate.west_ac", "heat", {"temperature": 22})
+    hass.states.async_set(
+        "climate.west_ac", "heat", {"temperature": 22}, context=Context(user_id="user")
+    )
     await hass.async_block_till_done()
     equipment = "hvac_west_ac"
     assert equipment in runtime.room_controller_use
@@ -1083,7 +1104,9 @@ async def test_manual_off_cancels_continued_office_use(hass, freezer):
     hass.states.async_set("climate.west_ac", "heat", {"temperature": 22})
     await hass.async_block_till_done()
     assert "west" in runtime.office_use
-    hass.states.async_set("climate.west_ac", "off", {"temperature": 22})
+    hass.states.async_set(
+        "climate.west_ac", "off", {"temperature": 22}, context=Context(user_id="user")
+    )
     await hass.async_block_till_done()
     assert "west" not in runtime.office_use
     assert "west" in runtime.office_use_suppressed

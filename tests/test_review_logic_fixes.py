@@ -137,7 +137,7 @@ async def test_manual_override_pauses_automatic_fan_changes(hass):
     ("delay", "context", "manual"),
     [
         (0.86, None, False),
-        (5, None, True),
+        (60, None, False),
         (0.86, Context(user_id="user"), True),
     ],
 )
@@ -172,8 +172,8 @@ async def test_airco_off_during_recovery_does_not_imply_manual_start(
         runtime.close()
 
 
-@pytest.mark.parametrize(("delay", "manual"), [(0.86, False), (5, True)])
-async def test_airco_already_off_when_zonentra_starts(hass, freezer, delay, manual):
+@pytest.mark.parametrize("delay", [0.86, 60])
+async def test_airco_already_off_when_zonentra_starts(hass, freezer, delay):
     await mock_climate(hass)
     # KNX wrote off before Zonentra subscribed to the airco's state changes.
     runtime = standalone(hass, mode="off")
@@ -185,8 +185,8 @@ async def test_airco_already_off_when_zonentra_starts(hass, freezer, delay, manu
         hass.states.async_set(UNIT, "heat", attrs)
         await hass.async_block_till_done()
 
-        assert ("ac" in runtime.overrides) is manual
-        assert (runtime.setpoint_plans["ac"].status == "manual_override") is manual
+        assert "ac" not in runtime.overrides
+        assert runtime.setpoint_plans["ac"].status != "manual_override"
     finally:
         unsub()
         runtime.close()

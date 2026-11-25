@@ -11,8 +11,8 @@ def _setpoint(value) -> str | None:
 def _origin(event) -> str:
     """Who caused a state change, as far as Home Assistant can tell.
 
-    A KNX room controller produces a bare context; a service call from an
-    automation or script carries a parent context; the HA UI carries a user.
+    Device reports can have a bare context. Automation and script runs can
+    carry a parent context, and Home Assistant actions can carry a user.
     """
     context = getattr(event, "context", None)
     if context is not None and context.user_id:

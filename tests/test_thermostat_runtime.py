@@ -259,7 +259,10 @@ async def test_room_regulation_switches_steers_and_respects_people(hass, freezer
     assert runtime.setpoint_plans[EQUIPMENT].status == "manual_override"
 
     # A person switches the unit off: it stays off for the override time.
-    await unit(hass, "off", temperature=25)
+    hass.states.async_set(
+        UNIT, "off", {**ATTRIBUTES, "temperature": 25}, context=Context(user_id="u")
+    )
+    await hass.async_block_till_done()
     assert runtime.overrides[EQUIPMENT].mode_at_start == "off"
     await later(hass, freezer, minutes=10)
     assert calls(mocks) == []
@@ -508,7 +511,8 @@ async def test_reload_keeps_memory_and_running_units(hass, freezer):
     await unit(hass, "heat")  # Ours.
     clear(mocks)
     # A person switches the unit off: respected for the override time.
-    await unit(hass, "off")
+    hass.states.async_set(UNIT, "off", ATTRIBUTES, context=Context(user_id="u"))
+    await hass.async_block_till_done()
     assert runtime.overrides[EQUIPMENT].mode_at_start == "off"
 
     assert await hass.config_entries.async_reload(central.entry_id)

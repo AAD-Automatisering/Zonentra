@@ -151,7 +151,7 @@
         },
         "submit": "Apply and return",
         "data_description": {
-          "manual_override_enabled": "Without an opening-hours schedule and building presence, manual switch-on temporarily pauses automatic control. With both configured, manual switch-on while present in comfort authorizes continued room use with automatic temperature and fan control. Manual switch-off and setpoint changes by a Home Assistant user are temporarily respected. This is separate from temporary targets on the Zonentra thermostat.",
+          "manual_override_enabled": "Without an opening-hours schedule and building presence, manual switch-on temporarily pauses automatic control. With both configured, manual switch-on while present in comfort authorizes continued room use with automatic temperature and fan control. Manual switch-off and setpoint changes by a Home Assistant user are temporarily respected. An override requires a Home Assistant user context. Device reports update the observed state only. This is separate from temporary targets on the Zonentra thermostat.",
           "setpoint_interval_seconds": "Used per air conditioner for both setpoint regulation and automatic fan speeds."
         }
       },

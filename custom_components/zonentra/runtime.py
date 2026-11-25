@@ -5,7 +5,7 @@ from dataclasses import asdict, replace
 from datetime import datetime, timedelta
 
 from homeassistant.const import EVENT_STATE_CHANGED, UnitOfTemperature
-from homeassistant.core import CoreState, HomeAssistant, callback
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.entity_component import DATA_INSTANCES
@@ -103,7 +103,6 @@ from .thermostat import (
 from .wind import WindMemory, WindProtection
 
 _LOGGER = logging.getLogger(__name__)
-UNIT_RECOVERY_SECONDS = 5
 UNIT_RUNNING = ("heat", "cool", "dry", "fan_only")
 ZONE_LIMIT_KEYS = (
     "heating_limit",
@@ -246,8 +245,6 @@ class BuildingRuntime(
         self.room_controller_use: set[str] = set()
         self.workday_presence_suppressed: set[str] = set()
         self.last_transitions = {}
-        self.unit_recovery_until: dict[str, datetime] = {}
-        self._seed_unit_recovery = True
         self.manual_events = {}
         self.coordination_memories = {}
         self.coordinations = {}
@@ -304,20 +301,6 @@ class BuildingRuntime(
                     state.last_changed,
                     self._climate(state) if entity_id.startswith("climate.") else None,
                 )
-        if self._seed_unit_recovery:
-            self._seed_unit_recovery = False
-            # The first off report may have arrived before we subscribed.
-            # Count from the actual state change, even if attributes arrived later.
-            for item in self.building.equipment:
-                if item.kind != "hvac":
-                    continue
-                source = sources.get(item.entity_id)
-                if source and source.state == "off" and source.changed_at:
-                    deadline = source.changed_at + timedelta(
-                        seconds=UNIT_RECOVERY_SECONDS
-                    )
-                    if source.changed_at <= now < deadline:
-                        self.unit_recovery_until[item.id] = deadline
         self._track_cover_contacts(sources)
         transitions = self._transitions(event, now)
         decisions = simulate(self.building, observations)
@@ -730,7 +713,6 @@ class BuildingRuntime(
         "room_controller_use",
         "workday_presence_suppressed",
         "last_transitions",
-        "unit_recovery_until",
         "manual_events",
         "command_tracker",
         "setpoint_tracker",
@@ -766,7 +748,6 @@ class BuildingRuntime(
 
     def adopt(self, previous: "BuildingRuntime") -> None:
         """Take over the in-memory state of the runtime this one replaces."""
-        self._seed_unit_recovery = False
         for name in self.CARRIED:
             setattr(self, name, getattr(previous, name))
         calendars = {
@@ -2065,20 +2046,6 @@ class BuildingRuntime(
                 zonentra_initiated=initiated,
                 origin=origin,
             )
-            # A gateway can briefly report off before its real state is read.
-            # Attribute reports while off leave the original deadline in place.
-            if new_value == "off" and transition in ("initial", "from_unavailable"):
-                self.unit_recovery_until[item.id] = now + timedelta(
-                    seconds=UNIT_RECOVERY_SECONDS
-                )
-            elif new_value != "off":
-                recovery_until = self.unit_recovery_until.pop(item.id, None)
-                if transition == "manual_on" and origin == "device":
-                    if self.hass.state in (CoreState.not_running, CoreState.starting):
-                        # A device report can be startup feedback or a room controller.
-                        transition = "startup_recovery"
-                    elif recovery_until is not None and now < recovery_until:
-                        transition = "availability_recovery"
             if transition == "attribute_update" and trusted:
                 transition = self._setpoint_transition(entity_id, old, new, event, now)
             if transition in ("manual_on", "manual_off", "manual_setpoint"):
@@ -2096,10 +2063,7 @@ class BuildingRuntime(
     def _setpoint_transition(self, entity_id, old, new, event, now) -> str:
         """0.9: who changed a running unit's setpoint (attribute only).
 
-        The room controllers of this installation only switch units on and
-        off. A setpoint change with a bare context therefore comes from the
-        unit or gateway itself (for example its own setpoint after switching
-        on), not from a person: only a Home Assistant user counts as manual.
+        Only a Home Assistant user context identifies manual operation.
         """
         before = _setpoint(old.attributes.get("temperature"))
         after = _setpoint(new.attributes.get("temperature"))

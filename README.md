@@ -248,15 +248,20 @@ openingstijden geeft beweging geen comfort: ook een nog actieve bewegingssensor,
 de nalooptijd of nieuwe beweging kan de ruimte niet automatisch opnieuw laten
 verwarmen op comfort. Binnen openingstijden werkt bewegingsdetectie normaal.
 
-Schakelt iemand bij aanwezige gebouwstatus een airco zelf in via de roomcontroller,
+Schakelt iemand bij aanwezige gebouwstatus een airco in via Home Assistant en
+bevat de melding een gebruikerscontext,
 dan blijft die ruimte in gebruik tot handmatig uitschakelen of het alarm
 weer aangaat, ook na sluitingstijd en voorbij de gewone overnameduur. Zonentra
 blijft daarbij temperatuur, ventilator en opwarmcorrectie automatisch regelen.
 Het inschakelen pauzeert de regeling niet. Een expliciete setpointwijziging door
 een Home Assistant-gebruiker behoudt de gewone tijdelijke regelpauze. Dit vereist
 het openingsschema, gebouwaanwezigheid en ingeschakelde handmatige overname.
-Alleen de betreffende ruimte krijgt comfort. Automatiseringen, Zonentra-opdrachten
-en een al draaiende airco bij opstart tellen niet als handmatig inschakelen.
+Alleen de betreffende ruimte krijgt comfort. Een losse aircomelding zonder
+gebruikerscontext werkt de actuele aan/uit-stand, modus, temperatuurinstelling
+of ventilatorstand bij. Dat geldt ook voor meldingen tijdens en na een
+herstart. De automatische regeling kan de stand na fysieke bediening opnieuw
+aanpassen. Gebruik de Zonentra-thermostaat om de kamerinstelling bewust te
+wijzigen.
 Thermostaat-uit en expliciet Eco/Afwezig beëindigen deze handmatige bediening;
 raambeveiliging en groepsbeveiligingen blijven gelden. Configuratieherladen bewaart
 de bediening; een volledige Home Assistant-herstart wist haar, zoals andere
@@ -406,19 +411,19 @@ Ruimtes met een agenda volgen hun afspraken en gebruiken deze uitzondering niet.
 Dit werkt uitsluitend maandag tot en met vrijdag én bij een betrouwbare aan-state
 van de werkdagsensor. Op zaterdag, zondag, feestdagen of bij ontbrekende/onbruikbare
 werkdaginformatie activeert alarm uit de uitzondering niet. Agenda-afspraken en
-bewust inschakelen via een roomcontroller blijven afzonderlijk werken.
+herkend inschakelen door een Home Assistant-gebruiker blijven afzonderlijk werken.
 
 De uitzondering vraagt comfort via de gewone ruimteregeling, zodat ook de
 setpointcorrectie blijft werken. Ruimteregeling moet ingeschakeld zijn; expliciet
 Eco/Afwezig, thermostaat-uit en beveiligingen behouden voorrang. Alarm aan beëindigt
-de uitzondering. Handmatig uitschakelen van een airco in die ruimte onderdrukt de
+de uitzondering. Herkend uitschakelen door een Home Assistant-gebruiker onderdrukt de
 uitzondering tot het gebouw opnieuw afwezig is geweest; configuratieherladen bewaart
 die keuze, een volledige HA-herstart niet. De actieve band toont `workday_presence`.
 
 Bij de aircosensor **Regelactie** staan `room_controller_use`,
 `manual_override_active`, `override_started_at`, `override_expires_at` en
 `last_manual_event`. De laatste detectie bevat tijdstip, overgang en globale
-contextbron (`device`, `ha_user` of `automation`); deze bron bewijst niet wie de bediening deed.
+contextbron (`ha_user`).
 De detectie blijft bij configuratieherladen bewaard, maar begint na een volledige
 HA-herstart opnieuw. **Setpointstatus** verklaart waarom **Geregeld setpoint**
 eventueel geen waarde toont. Screenbediening heeft een afzonderlijke overname
@@ -427,6 +432,5 @@ en maakt geen handmatige airco-overname aan.
 Voortgezet werkdaggebruik blijft bij configuratieherladen behouden zolang schema,
 werkdagbron en aanwezigheidsbron gelijk blijven. Een volledige Home Assistant-herstart
 wist deze gebruiksstatus. Na zo'n herstart buiten openingstijden is niet bekend
-welke ruimtes vóór sluiting in gebruik waren; schakel de gewenste ruimte dan
-via de roomcontroller in. Een nieuwe start buiten openingstijden wordt nooit
+welke ruimtes vóór sluiting in gebruik waren. Een nieuwe start buiten openingstijden wordt nooit
 achteraf als gewone werkdagaanwezigheid geïnterpreteerd.

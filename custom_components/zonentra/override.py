@@ -1,10 +1,9 @@
 """Pure manual-override detection and command tracking; no HA imports.
 
-Policy for this installation: an external switch-on of a linked indoor unit
-(state ``off`` -> an active mode) is treated as a manual override. Home Assistant
-state events do not prove who changed a state. The runtime uses HA contexts
-to distinguish recognizable automations from users and room controllers.
-Zonentra-initiated changes are excluded through the CommandTracker.
+Only a linked indoor unit's state change with a Home Assistant user context
+counts as manual operation. Anonymous device reports can reflect a room
+controller or a gateway refreshing its state. Zonentra-initiated changes are
+excluded through the CommandTracker.
 
 Overrides live in memory only and do not survive a Home Assistant restart: an
 expired override can never come back, and a restart is never a transition.
@@ -115,10 +114,9 @@ def classify_transition(
     if not trusted:
         return "untrusted"  # restored or assumed state
     if old_state == "off" and new_state in ACTIVE_MODES:
-        # Automations and scripts are not people at a room controller.
-        return "automation_on" if origin == "automation" else "manual_on"
+        return "manual_on" if origin == "ha_user" else "external_on"
     if old_state in ACTIVE_MODES and new_state == "off":
-        return "manual_off"
+        return "manual_off" if origin == "ha_user" else "external_off"
     if old_state in ACTIVE_MODES and new_state in ACTIVE_MODES:
         return "mode_change"
     return "ignored"

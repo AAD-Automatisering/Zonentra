@@ -235,7 +235,8 @@ def test_action_and_phase_lists_match_sensor_options():
     "mode", ["heat", "cool", "dry", "fan_only", "auto", "heat_cool"]
 )
 def test_off_to_active_mode_is_manual_on(mode):
-    assert classify_transition("off", mode) == "manual_on"
+    assert classify_transition("off", mode, origin="ha_user") == "manual_on"
+    assert classify_transition("off", mode) == "external_on"
 
 
 @pytest.mark.parametrize(
@@ -247,7 +248,9 @@ def test_off_to_active_mode_is_manual_on(mode):
         (None, "heat", {"old_present": False}, "initial"),  # 13: startup.
         ("off", "heat", {"zonentra_initiated": True}, "zonentra_initiated"),  # 16
         ("off", "heat", {"trusted": False}, "untrusted"),
-        ("heat", "off", {}, "manual_off"),
+        ("heat", "off", {}, "external_off"),
+        ("heat", "off", {"origin": "automation"}, "external_off"),
+        ("heat", "off", {"origin": "ha_user"}, "manual_off"),
         ("heat", "cool", {}, "mode_change"),
         ("heat", "unavailable", {}, "to_unavailable"),
     ],
@@ -327,15 +330,6 @@ def test_command_tracker_is_bounded():
     tracker.register("climate.west", "heat", NOW)
     assert not tracker.confirm("climate.west", "heat", NOW + timedelta(seconds=61))
     assert tracker.pending == ()
-
-
-def test_external_automation_counts_as_manual_override():
-    """17: HA cannot tell an automation from the room controller."""
-    tracker = CommandTracker()
-    initiated = tracker.confirm("climate.west", "heat", NOW)
-    assert classify_transition("off", "heat", zonentra_initiated=initiated) == (
-        "manual_on"
-    )
 
 
 # 7, 9: override keeps the unit on without demand; afterwards automatic again.
@@ -560,13 +554,13 @@ def test_unavailable_unit_blocks_group_switch():
 @pytest.mark.parametrize(
     ("origin", "expected"),
     [
-        ("device", "manual_on"),
+        ("device", "external_on"),
         ("ha_user", "manual_on"),
-        ("automation", "automation_on"),
+        ("automation", "external_on"),
     ],
 )
 def test_origin_of_a_switch_on(origin, expected):
-    """0.7: only people (room controller or HA user) start a manual override."""
+    """Only a recognized user can start a manual override."""
     assert classify_transition("off", "heat", origin=origin) == expected
     result, _ = update_override(
         None, expected, "west", "heat", NOW, enabled=True, duration_minutes=30

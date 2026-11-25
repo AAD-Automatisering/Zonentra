@@ -88,7 +88,7 @@ async def test_regulated_setpoint_tracks_available_calculation(hass, freezer):
     await unit(hass, "off", **KNX)
     inactive = state(hass, zone, "regulated_setpoint")
     assert inactive.state == "unavailable"
-    assert state(hass, zone, "setpoint_status").state == "manual_override"
+    assert state(hass, zone, "setpoint_status").state == "unit_not_running"
 
 
 async def test_open_window_stops_the_room(hass, freezer):
