@@ -293,7 +293,7 @@ async def test_meeting_start_result_is_measured_once_and_saved(
     runtime = central.runtime_data
     if status == "ready":
         runtime.thermal_rates["west"] = {"mild": ThermalRates(heating_buffer=5)}
-    runtime.set_thermostat("west", regulation=True)
+    runtime.set_thermostat("west", preset="eco", regulation=True)
     calendar_service(hass, {CALENDAR: {"events": [booking(20)]}})
     await runtime.async_update_bookings()
     assert runtime.booking_plans["west"].status == "preparing"
@@ -327,7 +327,7 @@ async def test_meeting_start_result_is_measured_once_and_saved(
     assert central.runtime_data.thermal_rates["west"]["mild"].heating_buffer == buffer
 
 
-async def test_booking_priority_rises_on_timer_but_saving_presets_do_not_get_it(
+async def test_booking_priority_rises_on_timer_until_away_or_thermostat_off(
     hass, freezer
 ):
     from tests.test_bookings_runtime import office as booking_office
@@ -342,6 +342,9 @@ async def test_booking_priority_rises_on_timer_but_saving_presets_do_not_get_it(
     await later(hass, freezer, minutes=1)
     assert runtime.zone_demands["west"].priority > before
     runtime.set_thermostat("west", preset="eco")
+    await hass.async_block_till_done()
+    assert runtime.zone_demands["west"].priority > before
+    runtime.set_thermostat("west", preset="away")
     await hass.async_block_till_done()
     assert runtime.zone_demands["west"].priority == 1
     runtime.set_thermostat("west", preset="comfort", hvac_mode="off")

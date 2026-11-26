@@ -272,6 +272,8 @@ onbruikbaar schema wordt geen voorbereiding gevraagd. Eco/Afwezig en uitgeschake
 regeling blijven leidend. De sensor **Klimaatvraag** toont status en starttijd.
 
 Agenda's gebruiken de comfortband en geleerde opwarm-/afkoeltempo's per ruimte.
+Tijdens de voorbereiding en afspraak krijgt de comfortvraag van de agenda voorrang
+op een gekozen Eco-preset. Een gekozen Afwezig-preset houdt voorrang.
 Zonder actieve afspraak of voorbereiding gebruiken agendaruimtes Eco tijdens
 openingstijden en Afwezig daarbuiten, als openingstijden en gebouwaanwezigheid
 centraal zijn ingesteld. Dat geldt ook bij een onbruikbare agenda.

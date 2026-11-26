@@ -728,8 +728,8 @@ Overlappende en aansluitende afspraken gelden als één aaneengesloten venster;
 de aankomstmarge begint bij de start van dat venster.
 Een gestart voorbereidingsvenster blijft tot het einde actief als de
 ruimte zijn temperatuur al bereikt; een aangepaste maximumtijd blijft begrenzen.
-De forecast-startmarges worden voor een actieve afspraak niet toegepast. Expliciete
-thermostaatinstellingen en alle bestaande apparaat-/groepsblokkades blijven leidend.
+De forecast-startmarges worden voor een actieve afspraak niet toegepast. Thermostaat-uit,
+uitgeschakelde ruimteregeling en apparaat-/groepsblokkades blijven leidend.
 Buiten `preparing` en `meeting` gebruikt een agendaruimte eco, onafhankelijk van
 beweging, tenzij het gebouw afwezig is. Ook bij een onbekende, verouderde of onbruikbare agenda
 geldt eco (`calendar_unknown`) of de afwezig-band bij gebouwafwezigheid.
@@ -737,8 +737,9 @@ Met een gekoppeld openingsschema én gebouwaanwezigheid vervangt de kantoorregel
 `no_booking` en `calendar_unknown` buiten openingstijden eveneens door afwezig
 (`outside_office_hours`). Tijdens openingstijden blijft deze Eco-terugval gelden.
 Een herstelde agenda hervat de actuele planning.
-Expliciete presets Eco en Afwezig blijven gelden. Timers evalueren start en einde zonder nieuw
-sensorevent. `BookingSensor` toont alleen planning en schatting, geen afspraakinhoud.
+Een actieve comfortvraag van de agenda krijgt voorrang op een gekozen Eco-preset.
+Een gekozen Afwezig-preset houdt voorrang. Timers evalueren start en einde zonder
+nieuw sensorevent. `BookingSensor` toont alleen planning en schatting, geen afspraakinhoud.
 
 ## Centrale openingstijden
 

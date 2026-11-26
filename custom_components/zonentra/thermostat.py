@@ -10,8 +10,7 @@ small and persistent:
   switched off). The room mode never forces the outdoor unit: the group still
   weighs every room's demand, and a heat-only room waits while its group cools;
 * ``preset``: ``comfort`` (presence and motion still lower the band to eco or
-  away, as in 0.8), or a fixed ``eco`` / ``away``; building absence always
-  wins;
+  away), ``eco`` (which yields to a booking's comfort request), or ``away``;
 * ``heating_limit`` / ``cooling_limit``: the room's own comfort band, set from
   the thermostat or the number entities. Unset means the configured limits;
 * ``regulation``: whether Zonentra really switches and steers this room's
@@ -282,10 +281,13 @@ def single_target(
 
 
 def active_band(preset: str, occupancy: Occupancy) -> tuple[str, str]:
-    """(band, reason). Building absence always wins, as in 0.8."""
+    """Return the effective band and its reason."""
     if occupancy.mode == "away" or preset == "away":
         return "away", occupancy.reason if occupancy.mode == "away" else "preset"
-    if preset == "comfort":  # Comfort, lowered by presence and motion.
+    if preset == "comfort" or occupancy.reason in (
+        "booking_preparing",
+        "booking_meeting",
+    ):
         return occupancy.mode, occupancy.reason
     return preset, "preset"
 

@@ -127,6 +127,7 @@ async def test_preparation_and_meeting_boundaries_without_temperature_events(
     )
     runtime = central.runtime_data
     assert runtime.booking_plans["west"].status == "scheduled"
+    runtime.set_thermostat("west", preset="eco")
     assert runtime.zone_bands["west"][0] == ("away" if absent else "eco")
     await later(hass, freezer, minutes=10)
     assert runtime.booking_plans["west"].status == "preparing"
@@ -141,6 +142,7 @@ async def test_preparation_and_meeting_boundaries_without_temperature_events(
     await later(hass, freezer, minutes=45)
     assert runtime.booking_plans["west"].status == "idle"
     assert runtime.zone_bands["west"][0] == ("away" if absent else "eco")
+    assert runtime.thermostat("west").preset == "eco"
 
 
 async def test_late_arrival_resumes_comfort_and_departure_restores_away(hass, freezer):
@@ -296,13 +298,12 @@ async def test_unbooked_calendar_room_uses_eco_unless_building_absent(hass, pres
     )
 
 
-@pytest.mark.parametrize("preset", ["eco", "away"])
-async def test_booking_respects_explicit_saving_preset(hass, preset):
+async def test_booking_respects_explicit_away_preset(hass):
     central, _, _ = await office(hass, start=0)
     runtime = central.runtime_data
-    runtime.set_thermostat("west", preset=preset)
+    runtime.set_thermostat("west", preset="away")
     assert runtime.booking_plans["west"].active
-    assert runtime.zone_bands["west"] == (preset, "preset")
+    assert runtime.zone_bands["west"] == ("away", "preset")
 
 
 async def test_unknown_calendar_keeps_absent_building_on_away(hass):
@@ -392,8 +393,9 @@ async def test_booked_room_starts_heating_when_regulation_is_enabled(hass, freez
     runtime = central.runtime_data
     await later(hass, freezer, minutes=4)
     clear(mocks)
-    runtime.set_thermostat("west", regulation=True)
+    runtime.set_thermostat("west", preset="eco", regulation=True)
     await hass.async_block_till_done()
+    assert runtime.zone_bands["west"] == ("comfort", "booking_preparing")
     assert [
         (c.data["entity_id"], c.data["hvac_mode"]) for c in mocks["set_hvac_mode"]
     ] == [("climate.west_ac", "heat")]

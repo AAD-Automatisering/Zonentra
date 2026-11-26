@@ -217,7 +217,7 @@ class BookingRuntimeMixin:
             self._booking_checks.append(min(arrival_deadline, plan.end))
         if plan.active:
             # Prepare before arrival even while the building is absent.
-            # Explicit thermostat off/eco/away still takes precedence later.
+            # Explicit Away and thermostat Off still take precedence later.
             return replace(occupancy, mode="comfort", reason=f"booking_{plan.status}")
         if occupancy.presence == "absent":
             return occupancy
@@ -242,7 +242,7 @@ class BookingRuntimeMixin:
             and thermostat.hvac_mode in ("heat", "cool", "heat_cool", "auto")
             and not (plan.direction == "heating" and thermostat.hvac_mode == "cool")
             and not (plan.direction == "cooling" and thermostat.hvac_mode == "heat")
-            and thermostat.preset == "comfort"
+            and thermostat.preset != "away"
             and not thermostat.manual
             and bool(units)
             and not any(
